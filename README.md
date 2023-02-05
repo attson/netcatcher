@@ -42,16 +42,14 @@ curl -s https://raw.githubusercontent.com/attson/niar/main/install/darwin-amd64.
 
 ```bash
 $ tail -f /usr/local/var/log/com.attson.niar.log
-delete host 114.55.245.131: gateway 192.168.199.51
-2023/02/05 16:31:46 debug: delete route git.hzwxbz2.cn -> 114.55.245.131 @ 192.168.199.51
-2023/02/05 16:31:46 stop niar by signal [terminated]
-2023/02/05 16:31:46 interface ppp0 status is connected
+2023/02/05 17:01:32 niar started...
+2023/02/05 17:01:32 ppp0: [info] interface status is connected
 add host 140.82.113.3: gateway 192.168.199.51
-2023/02/05 16:31:46 debug: add route github.com -> 140.82.113.3 @ 192.168.199.51
+2023/02/05 17:01:32 ppp0: [debug] add route github.com -> 140.82.113.3 @ 192.168.199.51
 add host 192.168.188.11: gateway 192.168.199.51
-2023/02/05 16:31:46 debug: add route 192.168.188.11 -> 192.168.188.11 @ 192.168.199.51
+2023/02/05 17:01:32 ppp0: [debug] add route 192.168.188.11 -> 192.168.188.11 @ 192.168.199.51
 add net 192.168.188.0: gateway 192.168.199.51
-2023/02/05 16:31:46 debug: add route 192.168.188.0/24 -> 192.168.188.0/24 @ 192.168.199.51
+2023/02/05 17:01:32 ppp0: [debug] add route 192.168.188.0/24 -> 192.168.188.0/24 @ 192.168.199.5
 ```
 
 ## tested on

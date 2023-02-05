@@ -83,7 +83,7 @@ func (n *Niar) resolveRoutes(gateway string) {
 
 		ips, err := net.LookupIP(addr)
 		if err != nil {
-			log.Printf("warn lookup %s fail %v\n", addr, err)
+			log.Printf("%s: [warn] lookup %s fail %v\n", n.config.Name, addr, err)
 		}
 		for _, ip := range ips {
 			n.routes = append(n.routes, Route{
@@ -100,7 +100,7 @@ func (n *Niar) resolveRoutes(gateway string) {
 func (n *Niar) addRoutersTo(addr net.Addr) {
 	ip, _, err := net.ParseCIDR(addr.String())
 	if err != nil {
-		log.Printf("error parse %s CIDR fail %v", addr.String(), err)
+		log.Printf("%s: [error] parse %s CIDR fail %v", n.config.Name, addr.String(), err)
 		return
 	}
 
@@ -108,9 +108,9 @@ func (n *Niar) addRoutersTo(addr net.Addr) {
 	for _, r := range n.routes {
 		err := route.AddRoute(r.Ip, r.Gateway, r.Mask)
 		if err != nil {
-			log.Printf("warn: add route fail %s %v", r, err)
+			log.Printf("%s: [warn] add route fail %s %v", n.config.Name, r, err)
 		} else {
-			log.Printf("debug: add route %s", r)
+			log.Printf("%s: [debug] add route %s", n.config.Name, r)
 		}
 
 	}
@@ -120,9 +120,9 @@ func (n *Niar) clearRouters() {
 	for _, r := range n.routes {
 		err := route.DeleteRoute(r.Ip, r.Gateway, r.Mask)
 		if err != nil {
-			log.Printf("warn: delete route fail %s %v", r, err)
+			log.Printf("%s: [warn] delete route fail %s %v", n.config.Name, r, err)
 		} else {
-			log.Printf("debug: delete route %s", r)
+			log.Printf("%s: [debug] delete route %s", n.config.Name, r)
 		}
 	}
 }
@@ -141,11 +141,11 @@ func (n *Niar) Watch() {
 					}
 				}
 
-				log.Printf("warn get interface fail %v\n", err)
+				log.Printf("%s: [warn] get interface fail %v\n", n.config.Name, err)
 			} else {
 				addrs, err := i.Addrs()
 				if err != nil || len(addrs) == 0 {
-					log.Printf("warn get interface addr fail %v\n", err)
+					log.Printf("%s: [warn] get interface addr fail %v\n", n.config.Name, err)
 				} else {
 					n.onChange <- ChangeEvent{
 						Status: Connected,
@@ -165,7 +165,7 @@ func (n *Niar) Watch() {
 				break
 			}
 
-			log.Printf("interface %s status is %s\n", n.config.Name, event.Status.String())
+			log.Printf("%s: [info] interface status is %s\n", n.config.Name, event.Status.String())
 
 			n.status = event.Status
 			if event.Status == Connected {

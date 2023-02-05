@@ -81,5 +81,6 @@ echo ""
 echo "default config: don't forget update"
 echo $config
 echo "edit config: vim /usr/local/bin/niar_${trimVerion}_darwin_amd64/config.json"
-echo "start cmd: sudo launchctl start com.attson.niar"
-echo "stop cmd: sudo launchctl stop com.attson.niar"
+echo "[notice] com.attson.niar runAtLoad..."
+echo "start cmd: sudo launchctl load /Library/LaunchDaemons/com.attson.niar.plist"
+echo "stop cmd: sudo launchctl unload /Library/LaunchDaemons/com.attson.niar.plist"
