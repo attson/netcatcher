@@ -47,5 +47,7 @@ func main() {
 		go n.Watch()
 	}
 
+	log.Printf("niar started...\n")
+
 	waitStop()
 }
