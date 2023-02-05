@@ -20,15 +20,12 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.19
-      - run: go build -o niar_linux_amd64 main.go # 这 3 条是交叉编译 Go 的指令，酌情修改。
-      - run: GOOS=darwin GOARCH=amd64 go build -o niar_darwin_amd64 main.go
-      - run: GOOS=darwin GOARCH=arm64 go build -o niar_darwin_arm64 main.go
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with: # 将下述可执行文件 release 上去
-          files: |
-            niar_linux_amd64
-            niar_windows_amd64.exe
-            niar_darwin_amd64
+        id: go
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@master
+        with:
+          version: latest
+          args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
