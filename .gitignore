@@ -1,3 +1,4 @@
 .idea
 config.json
 niar*.gz*
+.DS_Store
