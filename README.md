@@ -35,7 +35,7 @@ sudo ./niar
 ### macos with launchctl
 
 ```
-curl -s https://raw.githubusercontent.com/attson/niar/main/install/darwin-amd64.sh | NIAR_VERSION=v0.0.4 bash
+curl -s https://raw.githubusercontent.com/attson/niar/main/install/darwin.sh | NIAR_VERSION=v0.0.4 NIAR_OS=darwin_amd64 bash
 ```
 
 ## run log
