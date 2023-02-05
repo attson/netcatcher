@@ -8,6 +8,14 @@ fi
 
 trimVerion=${version#v}
 
+echo "
+get execute binary file...
+  - wget "https://github.com/attson/niar/releases/download/${version}/niar_${trimVerion}_darwin_amd64.tar.gz"
+  - mkdir "/usr/local/bin/niar_${trimVerion}_darwin_amd64"
+  - tar -zxf "niar_${trimVerion}_darwin_amd64.tar.gz" -C "/usr/local/bin/niar_${trimVerion}_darwin_amd64"
+  - chmod +x "/usr/local/bin/niar_${trimVerion}_darwin_amd64/niar"
+"
+
 wget "https://github.com/attson/niar/releases/download/${version}/niar_${trimVerion}_darwin_amd64.tar.gz"
 mkdir "/usr/local/bin/niar_${trimVerion}_darwin_amd64"
 tar -zxf "niar_${trimVerion}_darwin_amd64.tar.gz" -C "/usr/local/bin/niar_${trimVerion}_darwin_amd64"
@@ -42,9 +50,11 @@ content=$(cat <<-END
 END
 )
 
+echo "create launchctl plist to /Library/LaunchDaemons/com.attson.niar.plist with root. maybe need ask for password"
+
 sudo bash -c "echo \"$content\" > /Library/LaunchDaemons/com.attson.niar.plist"
 
-sudo launchctl unload /Library/LaunchDaemons/com.attson.niar.plist
+sudo launchctl unload /Library/LaunchDaemons/com.attson.niar.plist || true
 sudo launchctl load /Library/LaunchDaemons/com.attson.niar.plist
 
 config=$(cat <<-END

@@ -26,8 +26,16 @@ support domain, fixed ip, ip mask
 
 ## quick install
 
-```bash
+**edit route need root permission. so you should run niar with root**
 
+```bash
+sudo ./niar
+```
+
+### macos with launchctl
+
+```
+curl -s https://raw.githubusercontent.com/attson/niar/main/install/darwin-amd64.sh | NIAR_VERSION=v0.0.4 bash
 ```
 
 ## run log
