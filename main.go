@@ -3,8 +3,9 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"niar/config"
-	"niar/niar"
+	"net"
+	"netcatcher/config"
+	"netcatcher/netcatcher"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,17 +17,34 @@ func waitStop() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 	s := <-sigs
 
-	for _, n := range niars {
+	for _, n := range netcatchers {
 		n.Stop()
 	}
-	log.Printf("stop niar by signal [%v]", s)
+	log.Printf("stop netcatcher by signal [%v]", s)
 
 	os.Exit(0)
 }
 
-var niars []*niar.Niar
+var netcatchers []*netcatcher.NetCatcher
 
 func main() {
+
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, i := range interfaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			panic(err)
+		}
+		log.Printf("%s: ", i.Name)
+		for _, a := range addrs {
+			log.Printf("\t%s", a.String())
+		}
+	}
+
 	file, err := os.ReadFile("config.json")
 	if err != nil {
 		panic(err)
@@ -40,14 +58,14 @@ func main() {
 	}
 
 	for _, s := range c.Interfaces {
-		n := niar.NewNiac(s)
+		n := netcatcher.NewNetCatcher(s)
 
-		niars = append(niars, n)
+		netcatchers = append(netcatchers, n)
 
 		go n.Watch()
 	}
 
-	log.Printf("niar started...\n")
+	log.Printf("netcatcher started...\n")
 
 	waitStop()
 }

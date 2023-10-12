@@ -1,11 +1,11 @@
-package niar
+package netcatcher
 
 import (
 	"fmt"
 	"log"
 	"net"
-	"niar/config"
-	"niar/route"
+	"netcatcher/config"
+	"netcatcher/route"
 	"time"
 )
 
@@ -32,7 +32,7 @@ type Route struct {
 	For     string
 	Ip      string
 	Gateway string
-	Mask    bool
+	Mask    net.IPMask
 }
 
 func (r Route) String() string {
@@ -44,7 +44,7 @@ type ChangeEvent struct {
 	Addr   net.Addr
 }
 
-type Niar struct {
+type NetCatcher struct {
 	config config.Interface
 
 	onChange chan ChangeEvent
@@ -53,19 +53,20 @@ type Niar struct {
 	routes []Route
 }
 
-func NewNiac(config config.Interface) *Niar {
-	return &Niar{config: config, onChange: make(chan ChangeEvent)}
+func NewNetCatcher(config config.Interface) *NetCatcher {
+	return &NetCatcher{config: config, onChange: make(chan ChangeEvent)}
 }
 
-func (n *Niar) resolveRoutes(gateway string) {
+func (n *NetCatcher) resolveRoutes(gateway string) {
 	n.routes = []Route{}
 	for _, addr := range n.config.Routes {
-		_, _, err := net.ParseCIDR(addr)
+		_, ipnet, err := net.ParseCIDR(addr)
+
 		if err == nil {
 			n.routes = append(n.routes, Route{
 				For:     addr,
 				Ip:      addr,
-				Mask:    true,
+				Mask:    ipnet.Mask,
 				Gateway: gateway,
 			})
 			continue
@@ -75,7 +76,7 @@ func (n *Niar) resolveRoutes(gateway string) {
 			n.routes = append(n.routes, Route{
 				For:     addr,
 				Ip:      addr,
-				Mask:    false,
+				Mask:    nil,
 				Gateway: gateway,
 			})
 			continue
@@ -97,7 +98,7 @@ func (n *Niar) resolveRoutes(gateway string) {
 	}
 }
 
-func (n *Niar) addRoutersTo(addr net.Addr) {
+func (n *NetCatcher) addRoutersTo(addr net.Addr) {
 	ip, _, err := net.ParseCIDR(addr.String())
 	if err != nil {
 		log.Printf("%s: [error] parse %s CIDR fail %v", n.config.Name, addr.String(), err)
@@ -116,7 +117,7 @@ func (n *Niar) addRoutersTo(addr net.Addr) {
 	}
 }
 
-func (n *Niar) clearRouters() {
+func (n *NetCatcher) clearRouters() {
 	for _, r := range n.routes {
 		err := route.DeleteRoute(r.Ip, r.Gateway, r.Mask)
 		if err != nil {
@@ -127,7 +128,7 @@ func (n *Niar) clearRouters() {
 	}
 }
 
-func (n *Niar) Watch() {
+func (n *NetCatcher) Watch() {
 	go func() {
 		for {
 			i, err := net.InterfaceByName(n.config.Name)
@@ -178,6 +179,6 @@ func (n *Niar) Watch() {
 	}
 }
 
-func (n *Niar) Stop() {
+func (n *NetCatcher) Stop() {
 	n.clearRouters()
 }

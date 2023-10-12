@@ -26,23 +26,23 @@ support domain, fixed ip, ip mask
 
 ## quick install
 
-**edit route need root permission. so you should run niar with root**
+**edit route need root permission. so you should run netcatcher with root**
 
 ```bash
-sudo ./niar
+sudo ./netcatcher
 ```
 
 ### macos with launchctl
 
 ```
-curl -s https://raw.githubusercontent.com/attson/niar/main/install/darwin.sh | NIAR_VERSION=v0.0.4 NIAR_OS=darwin_amd64 bash
+curl -s https://raw.githubusercontent.com/attson/netcatcher/main/install/darwin.sh | NETCATCHER_VERSION=v0.0.4 NETCATCHER_OS=darwin_amd64 bash
 ```
 
 ## run log
 
 ```bash
-$ tail -f /usr/local/var/log/com.attson.niar.log
-2023/02/05 17:01:32 niar started...
+$ tail -f /usr/local/var/log/com.attson.netcatcher.log
+2023/02/05 17:01:32 netcatcher started...
 2023/02/05 17:01:32 ppp0: [info] interface status is connected
 add host 140.82.113.3: gateway 192.168.199.51
 2023/02/05 17:01:32 ppp0: [debug] add route github.com -> 140.82.113.3 @ 192.168.199.51
@@ -52,6 +52,9 @@ add net 192.168.188.0: gateway 192.168.199.51
 2023/02/05 17:01:32 ppp0: [debug] add route 192.168.188.0/24 -> 192.168.188.0/24 @ 192.168.199.5
 ```
 
+### windows with task scheduler
+
 ## tested on
 
 - [x] macos
+- [x] windows
