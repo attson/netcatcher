@@ -155,3 +155,4 @@ PS C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386> .\netcatcher.exe
 
 - [配置开机启动](https://www.arloor.com/posts/other/start-onboot-windows-macos/)
 - [windows route 管理](https://www.163.com/dy/article/FATGQ880053194Z5.html) 
+- [如何解决windows vpn全局路由问题](https://superuser.com/a/198396)
