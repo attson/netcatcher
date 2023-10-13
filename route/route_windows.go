@@ -41,9 +41,9 @@ func DeleteRoute(ip, gateway string, mask net.IPMask) error {
 	var command *exec.Cmd
 
 	if mask != nil {
-		command = exec.Command("route", "delete", "-net", ip, gateway)
+		command = exec.Command("route", "delete", ip, "mask", maskString(mask))
 	} else {
-		command = exec.Command("route", "delete", ip, "mask", "255.255.255.255", gateway)
+		command = exec.Command("route", "delete", ip)
 	}
 
 	command.Stderr = NewW(os.Stderr)
