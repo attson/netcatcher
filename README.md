@@ -106,8 +106,7 @@ C:\Users\你的用户名\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\S
 ```
 set forward=WScript.CreateObject("WScript.Shell")
 forward.Run "taskkill /f /im netcatcher.exe",0,True
-forward.Run "C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386\netcatcher.exe > C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386\run.log",0
-```
+forward.Run "C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386\netcatcher.exe -c config file: C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386\config.json > C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386\run.log",0```
 
 添加完后可以看到，重启电脑后就会自动启动了
 ![img_3.png](doc/img_3.png)
@@ -131,6 +130,7 @@ PS C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386> .\netcatcher.exe
 2023/10/13 22:04:00 Loopback Pseudo-Interface 1:
 2023/10/13 22:04:00     ::1/128
 2023/10/13 22:04:00     127.0.0.1/8
+2023/10/13 22:14:18 config file: C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386\config.json
 2023/10/13 22:04:00 netcatcher started...
 2023/10/13 22:04:00 xxxx: [info] interface status is connected
  操作完成!

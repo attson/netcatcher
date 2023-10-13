@@ -45,7 +45,21 @@ func main() {
 		}
 	}
 
-	file, err := os.ReadFile("config.json")
+	configPath := "config.json"
+
+	// get -c argument
+	if len(os.Args) > 2 {
+		if os.Args[1] == "-c" {
+			if len(os.Args) < 2 {
+				panic("config file not found")
+			}
+			configPath = os.Args[2]
+		}
+	}
+
+	log.Printf("config file: %s\n", configPath)
+
+	file, err := os.ReadFile(configPath)
 	if err != nil {
 		panic(err)
 	}
