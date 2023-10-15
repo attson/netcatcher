@@ -7,8 +7,8 @@ import (
 	"golang.org/x/text/transform"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
-	"os"
 	"os/exec"
 )
 
@@ -31,8 +31,8 @@ func AddRoute(ip, gateway string, mask net.IPMask) error {
 		command = exec.Command("route", "add", ip, "mask", "255.255.255.255", gateway)
 	}
 
-	command.Stderr = NewW(os.Stderr)
-	command.Stdout = NewW(os.Stdout)
+	command.Stderr = NewW(log.Writer())
+	command.Stdout = NewW(log.Writer())
 
 	return command.Run()
 }
@@ -46,8 +46,8 @@ func DeleteRoute(ip, gateway string, mask net.IPMask) error {
 		command = exec.Command("route", "delete", ip)
 	}
 
-	command.Stderr = NewW(os.Stderr)
-	command.Stdout = NewW(os.Stdout)
+	command.Stderr = NewW(log.Writer())
+	command.Stdout = NewW(log.Writer())
 
 	return command.Run()
 }

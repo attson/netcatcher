@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"log"
 	"net"
 	"netcatcher/config"
@@ -28,6 +29,17 @@ func waitStop() {
 var netcatchers []*netcatcher.NetCatcher
 
 func main() {
+	configPath := flag.String("c", "config.json", "config file path")
+	logPath := flag.String("l", "", "log file path")
+	flag.Parse()
+
+	if *logPath != "" {
+		open, err := os.OpenFile(*logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			panic(err)
+		}
+		log.SetOutput(open)
+	}
 
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -45,21 +57,9 @@ func main() {
 		}
 	}
 
-	configPath := "config.json"
+	log.Printf("config file: %s\n", *configPath)
 
-	// get -c argument
-	if len(os.Args) > 2 {
-		if os.Args[1] == "-c" {
-			if len(os.Args) < 2 {
-				panic("config file not found")
-			}
-			configPath = os.Args[2]
-		}
-	}
-
-	log.Printf("config file: %s\n", configPath)
-
-	file, err := os.ReadFile(configPath)
+	file, err := os.ReadFile(*configPath)
 	if err != nil {
 		panic(err)
 	}

@@ -1,8 +1,8 @@
 package route
 
 import (
+	"log"
 	"net"
-	"os"
 	"os/exec"
 )
 
@@ -15,8 +15,8 @@ func AddRoute(ip, gateway string, mask net.IPMask) error {
 		command = exec.Command("route", "add", "-host", ip, gateway)
 	}
 
-	command.Stderr = os.Stderr
-	command.Stdout = os.Stdout
+	command.Stderr = log.Writer()
+	command.Stdout = log.Writer()
 
 	return command.Run()
 }
@@ -30,8 +30,8 @@ func DeleteRoute(ip, gateway string, mask net.IPMask) error {
 		command = exec.Command("route", "delete", "-host", ip, gateway)
 	}
 
-	command.Stderr = os.Stderr
-	command.Stdout = os.Stdout
+	command.Stderr = log.Writer()
+	command.Stdout = log.Writer()
 
 	return command.Run()
 }

@@ -100,24 +100,32 @@ add net 192.168.188.0: gateway 192.168.199.51
 
 通过脚本快速配置启动服务，通过`task scheduler`方式，可以配置开机自启动
 
-编写netcatcher.vbs，放到
-```bash
-C:\Users\你的用户名\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
-```
+先编写netcatcher.vbs，放到 C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\netcatcher.vbs 通过vbs启动一个隐藏的cmd
 
 ```
 set forward=WScript.CreateObject("WScript.Shell")
 forward.Run "taskkill /f /im netcatcher.exe",0,True
-forward.Run "C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386\netcatcher.exe -c config file: C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386\config.json > C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386\run.log",0```
+forward.Run "C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\netcatcher.exe -c C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\config.json -l C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\run.log",0
 
-添加完后可以看到，重启电脑后就会自动启动了
-![img_3.png](doc/img_3.png)
+```
+
+然后通过powershell脚本，配置task scheduler（使用管理员权限运行powershell）
+
+配置系统启动时，以及网络连接时，并使用系统权限运行 netcatcher.vbs （也可以手动在计划任务中添加）
+
+```powershell
+$taskName = "netcatcher"
+$taskPath = "C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\netcatcher.vbs"
+$action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument $taskPath
+$trigger = New-ScheduledTaskTrigger -AtStartup
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable -DontStopOnIdleEnd
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -User "SYSTEM"
+```
+
 
 ### 运行日志
 
 ```bash
-$ tail -f run.log
-PS C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386> .\netcatcher.exe
 2023/10/13 22:04:00 以太网:
 2023/10/13 22:04:00     fdb0:4c12:48f::f27/128
 2023/10/13 22:04:00     fdb0:4c12:48f:0:9dbf:ceb2:c663:bac2/64
@@ -132,7 +140,7 @@ PS C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386> .\netcatcher.exe
 2023/10/13 22:04:00 Loopback Pseudo-Interface 1:
 2023/10/13 22:04:00     ::1/128
 2023/10/13 22:04:00     127.0.0.1/8
-2023/10/13 22:14:18 config file: C:\Users\Attson\Downloads\netcatcher_0.0.8_windows_386\config.json
+2023/10/13 22:14:18 config file: C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\config.json
 2023/10/13 22:04:00 netcatcher started...
 2023/10/13 22:04:00 xxxx: [info] interface status is connected
  操作完成!
