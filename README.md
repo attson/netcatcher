@@ -50,7 +50,7 @@ sudo ./netcatcher
 通过脚本快速配置启动服务，通过`launchctl`方式，可以配置开机自启动
 
 ```
-curl -s https://raw.githubusercontent.com/attson/netcatcher/main/install/darwin.sh | NETCATCHER_VERSION=v0.0.4 NETCATCHER_OS=darwin_amd64 bash
+curl -s https://raw.githubusercontent.com/attson/netcatcher/main/install/darwin.sh | NETCATCHER_VERSION=v0.2.0 NETCATCHER_OS=darwin_amd64 bash
 ```
 
 ### 运行日志
