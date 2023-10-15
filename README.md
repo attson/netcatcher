@@ -100,12 +100,12 @@ add net 192.168.188.0: gateway 192.168.199.51
 
 通过脚本快速配置启动服务，通过`task scheduler`方式，可以配置开机自启动
 
-先编写netcatcher.vbs，放到 C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\netcatcher.vbs 通过vbs启动一个隐藏的cmd
+先编写netcatcher.vbs，放到 C:\Users\Attson\Downloads\netcatcher_0.2.0_windows_386\netcatcher.vbs 通过vbs启动一个隐藏的cmd
 
 ```
 set forward=WScript.CreateObject("WScript.Shell")
 forward.Run "taskkill /f /im netcatcher.exe",0,True
-forward.Run "C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\netcatcher.exe -c C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\config.json -l C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\run.log",0
+forward.Run "C:\Users\Attson\Downloads\netcatcher_0.2.0_windows_386\netcatcher.exe -c C:\Users\Attson\Downloads\netcatcher_0.2.0_windows_386\config.json -l C:\Users\Attson\Downloads\netcatcher_0.2.0_windows_386\run.log",0
 
 ```
 
@@ -115,7 +115,7 @@ forward.Run "C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\netcatcher.e
 
 ```powershell
 $taskName = "netcatcher"
-$taskPath = "C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\netcatcher.vbs"
+$taskPath = "C:\Users\Attson\Downloads\netcatcher_0.2.0_windows_386\netcatcher.vbs"
 $action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument $taskPath
 $trigger = New-ScheduledTaskTrigger -AtStartup
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable -DontStopOnIdleEnd
@@ -140,7 +140,7 @@ Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Se
 2023/10/13 22:04:00 Loopback Pseudo-Interface 1:
 2023/10/13 22:04:00     ::1/128
 2023/10/13 22:04:00     127.0.0.1/8
-2023/10/13 22:14:18 config file: C:\Users\Attson\Downloads\netcatcher_1.0.0_windows_386\config.json
+2023/10/13 22:14:18 config file: C:\Users\Attson\Downloads\netcatcher_0.2.0_windows_386\config.json
 2023/10/13 22:04:00 netcatcher started...
 2023/10/13 22:04:00 xxxx: [info] interface status is connected
  操作完成!
