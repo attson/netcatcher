@@ -36,6 +36,8 @@ sudo ./netcatcher
 
 ## macos 使用
 
+blog: https://attson.github.io/p/network-interface-auto-route.html
+
 ### 启动 netcatcher
 
 #### 手动启动方式
