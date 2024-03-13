@@ -18,12 +18,41 @@ func waitStop() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 	s := <-sigs
 
-	for _, n := range netcatchers {
-		n.Stop()
-	}
+	stop()
+
 	log.Printf("stop netcatcher by signal [%v]", s)
 
 	os.Exit(0)
+}
+
+func stop() {
+	for _, n := range netcatchers {
+		n.Stop()
+	}
+
+	netcatchers = []*netcatcher.NetCatcher{}
+}
+
+func start(configPath string) {
+	file, err := os.ReadFile(configPath)
+	if err != nil {
+		panic(err)
+	}
+
+	c := config.Config{}
+
+	err = json.Unmarshal(file, &c)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, s := range c.Interfaces {
+		n := netcatcher.NewNetCatcher(s)
+
+		netcatchers = append(netcatchers, n)
+
+		go n.Watch()
+	}
 }
 
 var netcatchers []*netcatcher.NetCatcher
@@ -59,25 +88,12 @@ func main() {
 
 	log.Printf("config file: %s\n", *configPath)
 
-	file, err := os.ReadFile(*configPath)
-	if err != nil {
-		panic(err)
-	}
+	start(*configPath)
 
-	c := config.Config{}
+	go func() {
+		// 监听文件变化
 
-	err = json.Unmarshal(file, &c)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, s := range c.Interfaces {
-		n := netcatcher.NewNetCatcher(s)
-
-		netcatchers = append(netcatchers, n)
-
-		go n.Watch()
-	}
+	}()
 
 	log.Printf("netcatcher started...\n")
 
