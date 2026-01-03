@@ -123,7 +123,8 @@ $trigger = New-ScheduledTaskTrigger -AtStartup
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable -DontStopOnIdleEnd
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -User "SYSTEM"
 ```
-
+powershell 执行完后就可以在任务计划程序中查看 (刚执行完，重启后才会自动启动，当前状态可以手动启动）
+![img_4.png](doc/img_4.png)
 
 ### 运行日志
 
