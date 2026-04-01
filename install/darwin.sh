@@ -16,13 +16,13 @@ trimVerion=${version#v}
 
 echo "
 get execute binary file...
-  - wget "https://github.com/attson/netcatcher/releases/download/${version}/netcatcher_${trimVerion}_${os}.tar.gz"
+  - curl -LO "https://github.com/attson/netcatcher/releases/download/${version}/netcatcher_${trimVerion}_${os}.tar.gz"
   - mkdir "/usr/local/bin/netcatcher_${trimVerion}_${os}"
   - tar -zxf "netcatcher_${trimVerion}_${os}.tar.gz" -C "/usr/local/bin/netcatcher_${trimVerion}_${os}"
   - chmod +x "/usr/local/bin/netcatcher_${trimVerion}_${os}/netcaptcher"
 "
 
-wget "https://github.com/attson/netcatcher/releases/download/${version}/netcatcher_${trimVerion}_${os}.tar.gz"
+curl -LO "https://github.com/attson/netcatcher/releases/download/${version}/netcatcher_${trimVerion}_${os}.tar.gz"
 mkdir "/usr/local/bin/netcatcher_${trimVerion}_${os}"
 tar -zxf "netcatcher_${trimVerion}_${os}.tar.gz" -C "/usr/local/bin/netcatcher_${trimVerion}_${os}"
 chmod +x "/usr/local/bin/netcatcher_${trimVerion}_${os}/netcatcher"
