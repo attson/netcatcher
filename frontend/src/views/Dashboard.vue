@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Call, Events } from '@wailsio/runtime'
 import { useMonitorStore } from '../stores/monitor'
@@ -13,10 +13,13 @@ const pingResults = ref({})
 const newIfaceName = ref('')
 const newRoutes = ref({})
 const saveMessage = ref('')
+const savedSnapshot = ref('')
+const dirty = computed(() => JSON.stringify(configStore.config) !== savedSnapshot.value)
 
 onMounted(async () => {
   await monitor.fetchStatus()
   await configStore.fetchConfig()
+  savedSnapshot.value = JSON.stringify(configStore.config)
   Events.On('interface:status-changed', (event) => {
     monitor.updateInterfaceStatus(event.data)
   })
@@ -69,6 +72,7 @@ function validateRoute(route) {
 async function save() {
   try {
     await configStore.saveConfig()
+    savedSnapshot.value = JSON.stringify(configStore.config)
     saveMessage.value = t('routes.saved')
     setTimeout(() => { saveMessage.value = '' }, 2000)
   } catch (e) { saveMessage.value = t('routes.saveFailed') + e }
@@ -113,7 +117,7 @@ function getResolvedIps(ifaceName, routeName) {
       <h2 style="margin-bottom: 0;">{{ $t('dashboard.interfaces') }}</h2>
       <div style="display: flex; align-items: center; gap: 8px;">
         <span v-if="saveMessage" style="color: var(--success); font-size: 13px;">{{ saveMessage }}</span>
-        <button class="btn btn-primary" @click="save" :disabled="configStore.saving" style="font-size: 12px;">
+        <button v-if="dirty" class="btn btn-primary" @click="save" :disabled="configStore.saving" style="font-size: 12px;">
           {{ configStore.saving ? $t('routes.saving') : $t('routes.saveApply') }}
         </button>
         <button class="btn btn-primary" v-if="!monitor.status.running" @click="monitor.startMonitor()">{{ $t('dashboard.start') }}</button>
