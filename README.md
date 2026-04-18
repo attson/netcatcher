@@ -126,6 +126,10 @@ By default, a VPN connection routes all traffic through the tunnel. To use per-r
 
 This stops all traffic from being sent through the VPN, allowing NetCatcher's static routes to control which destinations use the tunnel.
 
+![vpn-info.png](doc/vpn-info.png)
+![vpn-net.png](doc/vpn-net.png)
+![modify- default.png](doc/modify-%20default.png)
+
 ## Notes
 
 - If a local DNS proxy or global proxy is active, domain names may resolve to incorrect IP addresses. Disable the proxy before starting NetCatcher if you rely on hostname-based routes.

@@ -126,6 +126,10 @@ go build -o build/bin/netcatcher-app .
 
 这将阻止所有流量通过 VPN 发送，让 NetCatcher 的静态路由控制哪些目标使用隧道。
 
+![vpn-info.png](doc/vpn-info.png)
+![vpn-net.png](doc/vpn-net.png)
+![modify- default.png](doc/modify-%20default.png)
+
 ## 注意事项
 
 - 如果本地 DNS 代理或全局代理处于活动状态，域名可能解析到错误的 IP 地址。如果依赖基于域名的路由，请在启动 NetCatcher 前禁用代理。
