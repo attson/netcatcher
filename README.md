@@ -56,28 +56,33 @@ On Windows, run the executable as Administrator.
 
 ### Dashboard
 
-The main screen shows an overview of all configured interfaces. Each interface card displays its name, connection status, gateway IP, and route count. Click a card to expand it and see individual routes. Use the **Start** / **Stop** button to control monitoring.
+The main screen shows an overview of all configured interfaces. Each interface card displays its name, connection status, gateway IP, and route count. Click a card to expand it and see individual routes with a **Ping** button for connectivity testing. Use the **Start** / **Stop** button to control monitoring.
 
-### Adding Routes
+![Dashboard](doc/screenshots/dashboard.png)
 
-1. Go to the **Routes** page.
-2. Enter a network interface name (e.g. `ppp0`, `utun3`) and click **Add Interface**.
-3. Under the interface, enter a route target — a domain name (`github.com`), an IP address (`192.168.1.1`), or a CIDR block (`10.0.0.0/8`) — and click **Add**.
-4. Add as many routes as needed, then click **Save & Apply**. The app reloads the config immediately without restarting.
+### Routes
 
-### Testing Connectivity
+Configure which traffic goes through which interface:
 
-In the Dashboard, expand an interface card and click **Ping** next to any route. The result shows latency or "Unreachable".
+1. Enter a network interface name (e.g. `ppp0`, `utun3`) and click **Add Interface**.
+2. Under the interface, enter a route target — a domain name (`github.com`), an IP address (`192.168.1.1`), or a CIDR block (`10.0.0.0/8`) — and click **Add**.
+3. Add as many routes as needed, then click **Save & Apply**. The config reloads immediately without restarting.
+
+![Routes](doc/screenshots/routes.png)
 
 ### Logs
 
-The **Logs** page shows real-time events (interface up/down, route add/remove, errors). Filter by log level or search by keyword. Scrolling up pauses auto-scroll; scroll back to the bottom to resume.
+Real-time log viewer showing interface up/down events, route add/remove operations, and errors. Filter by log level or search by keyword. Scrolling up pauses auto-scroll; scroll back to the bottom to resume.
+
+![Logs](doc/screenshots/logs.png)
 
 ### Settings
 
 - **Launch at startup** — register/unregister the app for auto-start on login.
 - **Notifications** — toggle system notifications when interfaces connect or disconnect.
-- **Language** — switch between English and Chinese. The preference is saved and persists across restarts.
+- **Language** — switch between English and Chinese. The preference persists across restarts.
+
+![Settings](doc/screenshots/settings.png)
 
 ### System Tray
 
