@@ -164,17 +164,27 @@ func (a *App) GetNotifications() bool {
 	return a.notifier.IsEnabled()
 }
 
-func (a *App) GetNetworkInterfaces() []string {
+type NetworkInterface struct {
+	Name  string `json:"name"`
+	Label string `json:"label"`
+}
+
+func (a *App) GetNetworkInterfaces() []NetworkInterface {
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return []string{}
+		return []NetworkInterface{}
 	}
-	var names []string
+	vpnNames := getVPNServiceNames()
+	var result []NetworkInterface
 	for _, i := range ifaces {
 		if strings.HasPrefix(i.Name, "lo") {
 			continue
 		}
-		names = append(names, i.Name)
+		label := i.Name
+		if name, ok := vpnNames[i.Name]; ok {
+			label = i.Name + " (" + name + ")"
+		}
+		result = append(result, NetworkInterface{Name: i.Name, Label: label})
 	}
-	return names
+	return result
 }

@@ -18,8 +18,13 @@ const savedSnapshot = ref('')
 const dirty = computed(() => JSON.stringify(configStore.config) !== savedSnapshot.value)
 const availableInterfaces = computed(() => {
   const configured = new Set(configStore.config.interfaces.map(i => i.name))
-  return systemInterfaces.value.filter(name => !configured.has(name))
+  return systemInterfaces.value.filter(i => !configured.has(i.name))
 })
+
+function getIfaceLabel(name) {
+  const iface = systemInterfaces.value.find(i => i.name === name)
+  return iface ? iface.label : name
+}
 
 onMounted(async () => {
   await monitor.fetchStatus()
@@ -136,7 +141,7 @@ function getResolvedIps(ifaceName, routeName) {
     <div v-if="availableInterfaces.length > 0" style="display: flex; gap: 8px; margin-bottom: 12px;">
       <select v-model="newIfaceName" style="flex: 1;">
         <option value="" disabled>{{ $t('routes.ifacePlaceholder') }}</option>
-        <option v-for="name in availableInterfaces" :key="name" :value="name">{{ name }}</option>
+        <option v-for="iface in availableInterfaces" :key="iface.name" :value="iface.name">{{ iface.label }}</option>
       </select>
       <button class="btn" @click="addInterface">{{ $t('routes.addInterface') }}</button>
     </div>
@@ -149,7 +154,7 @@ function getResolvedIps(ifaceName, routeName) {
       <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;" @click="toggle(iface.name)">
         <div style="display: flex; align-items: center; gap: 10px;">
           <span style="font-size: 10px;" :style="{ color: getMonitorIface(iface.name)?.connected ? 'var(--success)' : 'var(--text-secondary)' }">●</span>
-          <span style="font-weight: 600;">{{ iface.name }}</span>
+          <span style="font-weight: 600;">{{ getIfaceLabel(iface.name) }}</span>
           <span v-if="getMonitorIface(iface.name)?.connected" class="badge badge-success">
             {{ $t('dashboard.connected') }}
           </span>
