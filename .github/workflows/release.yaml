@@ -48,6 +48,7 @@ jobs:
         run: cd frontend && npx vite build
 
       - name: Build Go binary
+        shell: bash
         run: |
           mkdir -p build/bin
           if [ "${{ matrix.platform }}" = "windows" ]; then
