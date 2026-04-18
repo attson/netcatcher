@@ -36,10 +36,17 @@ jobs:
       - name: Build frontend
         run: cd frontend && npx vite build
 
-      - name: Build Go binary
+      - name: Build Go binary (macOS)
+        if: matrix.platform == 'darwin'
         run: |
           mkdir -p build/bin
-          go build -o build/bin/netcatcher-app .
+          go build -o build/bin/netcatcher-darwin-universal .
+
+      - name: Build Go binary (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          mkdir -p build/bin
+          go build -o build/bin/netcatcher-windows-amd64.exe .
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
