@@ -1,5 +1,7 @@
 # NetCatcher
 
+[中文文档](README.zh-CN.md)
+
 A desktop application that monitors network interfaces and automatically adds static routes when they connect. Useful when running multiple network interfaces or VPN connections and you need specific traffic to flow through a particular interface.
 
 ## Features
@@ -7,7 +9,10 @@ A desktop application that monitors network interfaces and automatically adds st
 - Dashboard showing active interfaces and their route status
 - Route config editor — manage interfaces and routes through the GUI
 - Real-time log viewer — see route add/remove events as they happen
-- Settings panel for app preferences
+- Route connectivity testing (ping)
+- System notifications on interface connect/disconnect
+- Multi-language support (English / Chinese)
+- Settings panel for app preferences (auto-start, notifications, language)
 - System tray integration — the app hides to the tray when the window is closed; use the tray menu to quit
 
 ## Prerequisites

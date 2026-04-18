@@ -52,8 +52,16 @@ NetCatcher is a Wails v3 desktop application. The frontend is Vue 3; the backend
 **Frontend:**
 
 - Vue 3 + Pinia stores for state management.
+- vue-i18n for internationalization (English + Chinese). Locale files at `frontend/src/i18n/en.json` and `frontend/src/i18n/zh-CN.json`.
+- `@wailsio/runtime` for calling Go methods (`Call.ByName('main.App.Method', ...args)`) and events (`Events.On('event', cb)`).
 - Wails Events for real-time updates pushed from the backend (route changes, log lines, interface status).
 - Views: dashboard, route config editor, real-time log viewer, settings.
+
+**i18n:**
+
+- Supported languages: English (`en`), Chinese (`zh-CN`).
+- Language preference saved to `localStorage('locale')`. Auto-detects browser language on first run.
+- All user-facing strings are in locale JSON files. Use `$t('key')` in templates, `t('key')` in script setup via `useI18n()`.
 
 **System tray:**
 
