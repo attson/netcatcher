@@ -45,9 +45,54 @@ jobs:
       - name: Build Go binary
         run: |
           mkdir -p build/bin
-          EXT=""
-          if [ "${{ matrix.platform }}" = "windows" ]; then EXT=".exe"; fi
-          go build -o "build/bin/netcatcher-${{ matrix.platform }}-${{ matrix.goarch }}${EXT}" .
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            go build -o "build/bin/netcatcher.exe" .
+          else
+            go build -o "build/bin/netcatcher" .
+          fi
+
+      - name: Package macOS .dmg
+        if: matrix.platform == 'darwin'
+        run: |
+          APP="build/NetCatcher.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+          cp build/bin/netcatcher "$APP/Contents/MacOS/NetCatcher"
+          cp build/appicon.png "$APP/Contents/Resources/appicon.png"
+
+          cat > "$APP/Contents/Info.plist" << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>NetCatcher</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.attson.netcatcher</string>
+            <key>CFBundleName</key>
+            <string>NetCatcher</string>
+            <key>CFBundleVersion</key>
+            <string>1.0.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0.0</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>LSUIElement</key>
+            <true/>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+
+          DMG_NAME="NetCatcher-${{ matrix.goarch }}.dmg"
+          hdiutil create -volname "NetCatcher" -srcfolder build/NetCatcher.app -ov -format UDZO "build/bin/$DMG_NAME"
+          rm -rf build/NetCatcher.app build/bin/netcatcher
+
+      - name: Rename Windows binary
+        if: matrix.platform == 'windows'
+        run: |
+          mv build/bin/netcatcher.exe "build/bin/NetCatcher-${{ matrix.goarch }}.exe"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
