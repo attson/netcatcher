@@ -127,24 +127,27 @@ func (n *NetCatcher) addRoutesTo(addr net.Addr) {
 		return
 	}
 	n.resolveRoutes(ip.String())
-	for _, r := range n.routes {
-		err := route.AddRoute(r.ip, r.gateway, r.mask)
-		if err != nil {
-			log.Printf("%s: [warn] add route fail %s %v", n.config.Name, r, err)
-		} else {
-			log.Printf("%s: [debug] add route %s", n.config.Name, r)
-		}
+	specs := make([]route.RouteSpec, len(n.routes))
+	for i, r := range n.routes {
+		specs[i] = route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask}
+		log.Printf("%s: [debug] add route %s", n.config.Name, r)
+	}
+	if err := route.AddRoutes(specs); err != nil {
+		log.Printf("%s: [warn] add routes failed: %v", n.config.Name, err)
 	}
 }
 
 func (n *NetCatcher) clearRoutes() {
-	for _, r := range n.routes {
-		err := route.DeleteRoute(r.ip, r.gateway, r.mask)
-		if err != nil {
-			log.Printf("%s: [warn] delete route fail %s %v", n.config.Name, r, err)
-		} else {
-			log.Printf("%s: [debug] delete route %s", n.config.Name, r)
-		}
+	if len(n.routes) == 0 {
+		return
+	}
+	specs := make([]route.RouteSpec, len(n.routes))
+	for i, r := range n.routes {
+		specs[i] = route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask}
+		log.Printf("%s: [debug] delete route %s", n.config.Name, r)
+	}
+	if err := route.DeleteRoutes(specs); err != nil {
+		log.Printf("%s: [warn] delete routes failed: %v", n.config.Name, err)
 	}
 }
 
