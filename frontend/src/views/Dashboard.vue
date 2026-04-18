@@ -18,7 +18,13 @@ const savedSnapshot = ref('')
 const dirty = computed(() => JSON.stringify(configStore.config) !== savedSnapshot.value)
 const availableInterfaces = computed(() => {
   const configured = new Set(configStore.config.interfaces.map(i => i.name))
-  return systemInterfaces.value.filter(i => !configured.has(i.name))
+  return systemInterfaces.value
+    .filter(i => !configured.has(i.name))
+    .sort((a, b) => {
+      const aHas = a.label !== a.name ? 0 : 1
+      const bHas = b.label !== b.name ? 0 : 1
+      return aHas - bHas
+    })
 })
 
 function getIfaceLabel(name) {
