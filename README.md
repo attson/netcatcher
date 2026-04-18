@@ -167,3 +167,7 @@ powershell 执行完后就可以在任务计划程序中查看 (刚执行完，�
 - [配置开机启动](https://www.arloor.com/posts/other/start-onboot-windows-macos/)
 - [windows route 管理](https://www.163.com/dy/article/FATGQ880053194Z5.html) 
 - [如何解决windows vpn全局路由问题](https://superuser.com/a/198396)
+
+## 其他问题
+
+- 如果本地开启了全局dns代理，程序从域名解析出的ip可能是不正确的，可以在启动本程序前关闭代理

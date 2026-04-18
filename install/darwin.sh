@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 version=$NETCATCHER_VERSION
 if [ "$version" = "" ]; then
@@ -15,18 +16,21 @@ fi
 trimVerion=${version#v}
 
 echo "
-get execute binary file...
+get execute binary file ... some cmd with root. maybe need ask for password
   - curl -LO "https://github.com/attson/netcatcher/releases/download/${version}/netcatcher_${trimVerion}_${os}.tar.gz"
-  - mkdir "/usr/local/bin/netcatcher_${trimVerion}_${os}"
-  - tar -zxf "netcatcher_${trimVerion}_${os}.tar.gz" -C "/usr/local/bin/netcatcher_${trimVerion}_${os}"
-  - chmod +x "/usr/local/bin/netcatcher_${trimVerion}_${os}/netcaptcher"
+  - sudo mkdir "/usr/local/bin/netcatcher_${trimVerion}_${os}"
+  - sudo tar -zxf "netcatcher_${trimVerion}_${os}.tar.gz" -C "/usr/local/bin/netcatcher_${trimVerion}_${os}"
+  - sudo chmod +x "/usr/local/bin/netcatcher_${trimVerion}_${os}/netcatcher"
 "
 
 curl -LO "https://github.com/attson/netcatcher/releases/download/${version}/netcatcher_${trimVerion}_${os}.tar.gz"
-mkdir "/usr/local/bin/netcatcher_${trimVerion}_${os}"
-tar -zxf "netcatcher_${trimVerion}_${os}.tar.gz" -C "/usr/local/bin/netcatcher_${trimVerion}_${os}"
-chmod +x "/usr/local/bin/netcatcher_${trimVerion}_${os}/netcatcher"
-content=$(cat <<-END
+sudo mkdir -p "/usr/local/bin/netcatcher_${trimVerion}_${os}"
+sudo tar -zxf "netcatcher_${trimVerion}_${os}.tar.gz" -C "/usr/local/bin/netcatcher_${trimVerion}_${os}"
+sudo chmod +x "/usr/local/bin/netcatcher_${trimVerion}_${os}/netcatcher"
+
+echo "create launchctl plist to /Library/LaunchDaemons/com.attson.netcatcher.plist"
+
+sudo tee /Library/LaunchDaemons/com.attson.netcatcher.plist << EOF > /dev/null
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -53,18 +57,13 @@ content=$(cat <<-END
     <string>/usr/local/bin/netcatcher_${trimVerion}_${os}</string>
   </dict>
 </plist>
-END
-)
+EOF
 
-echo "create launchctl plist to /Library/LaunchDaemons/com.attson.netcatcher.plist with root. maybe need ask for password"
-
-sudo bash -c "echo \"$content\" > /Library/LaunchDaemons/com.attson.netcatcher.plist"
-
-sudo launchctl unload /Library/LaunchDaemons/com.attson.netcaptcher.plist || true
-sudo launchctl load /Library/LaunchDaemons/com.attson.netcaptcher.plist
+sudo launchctl unload /Library/LaunchDaemons/com.attson.netcatcher.plist || true
+sudo launchctl load /Library/LaunchDaemons/com.attson.netcatcher.plist
 
 if [ ! -f "/usr/local/bin/netcatcher_${trimVerion}_${os}/config.json" ]; then
-  config=$(cat <<-END
+  sudo tee "/usr/local/bin/netcatcher_${trimVerion}_${os}/config.json" << 'EOF' > /dev/null
   {
    "interfaces": [
      {
@@ -77,9 +76,7 @@ if [ ! -f "/usr/local/bin/netcatcher_${trimVerion}_${os}/config.json" ]; then
      }
    ]
   }
-  END
-  )
-  echo "$config" > "/usr/local/bin/netcatcher_${trimVerion}_${os}/config.json"
+EOF
 fi
 
 echo ""
