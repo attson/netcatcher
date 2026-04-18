@@ -29,7 +29,7 @@ func ensureAuth() {
 			log.Printf("[warn] get current user failed: %v", err)
 			return
 		}
-		rule := fmt.Sprintf("%s ALL=(ALL) NOPASSWD: /sbin/route", u.Username)
+		rule := fmt.Sprintf("%s ALL=(ALL) NOPASSWD: /sbin/route, /bin/rm %s", u.Username, sudoersFile)
 		cmd := fmt.Sprintf(`do shell script "echo '%s' > %s && chmod 0440 %s" with administrator privileges`, rule, sudoersFile, sudoersFile)
 		command := exec.Command("osascript", "-e", cmd)
 		command.Stderr = log.Writer()
