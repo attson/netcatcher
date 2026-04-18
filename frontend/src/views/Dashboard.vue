@@ -26,6 +26,13 @@ const uptime = computed(() => {
 
 function toggle(name) { expanded.value[name] = !expanded.value[name] }
 
+const copiedKey = ref(null)
+function copyText(text) {
+  navigator.clipboard.writeText(text)
+  copiedKey.value = text
+  setTimeout(() => { copiedKey.value = null }, 1500)
+}
+
 async function pingRoute(host) {
   pingResults.value[host] = { loading: true }
   try {
@@ -93,8 +100,11 @@ async function pingRoute(host) {
         </div>
         <div v-for="route in iface.routes" :key="route.ip" style="display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px;">
           <span style="font-size: 8px;" :style="{ color: route.active ? 'var(--success)' : 'var(--text-secondary)' }">●</span>
-          <span style="color: var(--text-link); font-family: var(--font-mono);">{{ route.for }}</span>
-          <span v-if="route.for !== route.ip" style="color: var(--text-secondary);">→ {{ route.ip }}</span>
+          <span style="color: var(--text-link); font-family: var(--font-mono); cursor: pointer;" @click.stop="copyText(route.for)" :title="copiedKey === route.for ? '✓' : route.for">{{ route.for }}</span>
+          <span v-if="route.for !== route.ip" style="color: var(--text-secondary);">→
+            <span style="cursor: pointer;" @click.stop="copyText(route.ip)" :title="copiedKey === route.ip ? '✓' : route.ip">{{ route.ip }}</span>
+          </span>
+          <span v-if="copiedKey === route.for || copiedKey === route.ip" style="color: var(--success); font-size: 11px;">✓</span>
           <button class="btn" style="font-size: 11px; padding: 2px 8px; margin-left: auto;" @click.stop="pingRoute(route.for)">
             {{ pingResults[route.for]?.loading ? '...' : $t('dashboard.ping') }}
           </button>
