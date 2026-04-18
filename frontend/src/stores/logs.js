@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { Call } from '@wailsio/runtime'
 
 export const useLogStore = defineStore('logs', () => {
   const entries = ref([])
@@ -15,7 +16,7 @@ export const useLogStore = defineStore('logs', () => {
 
   async function fetchRecent() {
     try {
-      const result = await window.wails.Call({ packageName: 'main', structName: 'App', methodName: 'GetRecentLogs', args: [200] })
+      const result = await Call.ByName('main.App.GetRecentLogs', 200)
       entries.value = result || []
     } catch (e) { console.error('fetchRecent failed:', e) }
   }

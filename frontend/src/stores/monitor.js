@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { Call } from '@wailsio/runtime'
 
 export const useMonitorStore = defineStore('monitor', () => {
   const status = ref({ running: false, interfaces: [], startedAt: null })
@@ -9,18 +10,18 @@ export const useMonitorStore = defineStore('monitor', () => {
 
   async function fetchStatus() {
     try {
-      const result = await window.wails.Call({ packageName: 'main', structName: 'App', methodName: 'GetStatus' })
+      const result = await Call.ByName('main.App.GetStatus')
       status.value = result
     } catch (e) { console.error('fetchStatus failed:', e) }
   }
 
   async function startMonitor() {
-    await window.wails.Call({ packageName: 'main', structName: 'App', methodName: 'StartMonitor' })
+    await Call.ByName('main.App.StartMonitor')
     await fetchStatus()
   }
 
   async function stopMonitor() {
-    await window.wails.Call({ packageName: 'main', structName: 'App', methodName: 'StopMonitor' })
+    await Call.ByName('main.App.StopMonitor')
     await fetchStatus()
   }
 

@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref, watch, nextTick } from 'vue'
+import { Events } from '@wailsio/runtime'
 import { useLogStore } from '../stores/logs'
 
 const logStore = useLogStore()
@@ -8,7 +9,7 @@ const autoScroll = ref(true)
 
 onMounted(async () => {
   await logStore.fetchRecent()
-  window.wails.Events.On('log:new', (event) => { logStore.addEntry(event.data) })
+  Events.On('log:new', (event) => { logStore.addEntry(event.data) })
   scrollToBottom()
 })
 

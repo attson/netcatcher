@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
+import { Call, Events } from '@wailsio/runtime'
 import { useMonitorStore } from '../stores/monitor'
 
 const monitor = useMonitorStore()
@@ -8,7 +9,7 @@ const pingResults = ref({})
 
 onMounted(async () => {
   await monitor.fetchStatus()
-  window.wails.Events.On('interface:status-changed', (event) => {
+  Events.On('interface:status-changed', (event) => {
     monitor.updateInterfaceStatus(event.data)
   })
 })
@@ -28,7 +29,7 @@ function toggle(name) { expanded.value[name] = !expanded.value[name] }
 async function pingRoute(host) {
   pingResults.value[host] = { loading: true }
   try {
-    const result = await window.wails.Call({ packageName: 'main', structName: 'App', methodName: 'PingRoute', args: [host] })
+    const result = await Call.ByName('main.App.PingRoute', host)
     pingResults.value[host] = result
   } catch (e) {
     pingResults.value[host] = { reachable: false, error: e.toString() }

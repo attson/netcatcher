@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted } from 'vue'
+import { Events } from '@wailsio/runtime'
 import { useMonitorStore } from './stores/monitor'
 import { useLogStore } from './stores/logs'
 
@@ -10,8 +11,8 @@ onMounted(async () => {
   await monitor.fetchStatus()
   await logStore.fetchRecent()
 
-  window.wails.Events.On('monitor:started', () => { monitor.fetchStatus() })
-  window.wails.Events.On('monitor:stopped', () => { monitor.fetchStatus() })
+  Events.On('monitor:started', () => { monitor.fetchStatus() })
+  Events.On('monitor:stopped', () => { monitor.fetchStatus() })
 })
 </script>
 

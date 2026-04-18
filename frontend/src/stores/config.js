@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { Call } from '@wailsio/runtime'
 
 export const useConfigStore = defineStore('config', () => {
   const config = ref({ interfaces: [] })
@@ -8,14 +9,14 @@ export const useConfigStore = defineStore('config', () => {
 
   async function fetchConfig() {
     try {
-      const result = await window.wails.Call({ packageName: 'main', structName: 'App', methodName: 'GetConfig' })
+      const result = await Call.ByName('main.App.GetConfig')
       config.value = result
     } catch (e) { console.error('fetchConfig failed:', e) }
   }
 
   async function fetchConfigPath() {
     try {
-      const result = await window.wails.Call({ packageName: 'main', structName: 'App', methodName: 'GetConfigPath' })
+      const result = await Call.ByName('main.App.GetConfigPath')
       configPath.value = result
     } catch (e) { console.error('fetchConfigPath failed:', e) }
   }
@@ -23,7 +24,7 @@ export const useConfigStore = defineStore('config', () => {
   async function saveConfig() {
     saving.value = true
     try {
-      await window.wails.Call({ packageName: 'main', structName: 'App', methodName: 'SaveConfig', args: [config.value] })
+      await Call.ByName('main.App.SaveConfig', config.value)
     } catch (e) { console.error('saveConfig failed:', e); throw e }
     finally { saving.value = false }
   }

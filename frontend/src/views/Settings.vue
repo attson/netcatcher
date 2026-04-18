@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { Call } from '@wailsio/runtime'
 import { useConfigStore } from '../stores/config'
 
 const configStore = useConfigStore()
@@ -10,7 +11,7 @@ const loading = ref(true)
 onMounted(async () => {
   await configStore.fetchConfigPath()
   try {
-    const result = await window.wails.Call({ packageName: 'main', structName: 'App', methodName: 'GetAutoStart' })
+    const result = await Call.ByName('main.App.GetAutoStart')
     autoStart.value = result
   } catch (e) { console.error('GetAutoStart failed:', e) }
   loading.value = false
@@ -19,7 +20,7 @@ onMounted(async () => {
 async function toggleAutoStart() {
   autoStart.value = !autoStart.value
   try {
-    await window.wails.Call({ packageName: 'main', structName: 'App', methodName: 'SetAutoStart', args: [autoStart.value] })
+    await Call.ByName('main.App.SetAutoStart', autoStart.value)
   } catch (e) {
     console.error('SetAutoStart failed:', e)
     autoStart.value = !autoStart.value
