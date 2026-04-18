@@ -15,17 +15,26 @@ NetCatcher 是一个桌面应用，用于监控网络接口并在连接时自动
 - 设置面板（开机自启、通知、语言切换）
 - 系统托盘 — 关闭窗口时隐藏到托盘，通过托盘菜单退出
 
-## 环境要求
+## 安装
+
+从 [Releases](https://github.com/attson/netcatcher/releases) 页面下载最新版本：
+
+| 平台 | 文件 |
+|------|------|
+| macOS (Apple Silicon) | `NetCatcher-arm64.dmg` |
+| macOS (Intel) | `NetCatcher-amd64.dmg` |
+| Windows | `NetCatcher-amd64.exe` |
+
+**macOS：** 打开 `.dmg` 文件，将 NetCatcher 拖入"应用程序"文件夹。应用需要 root 权限管理路由 — 使用 `sudo` 启动或授予相应权限。
+
+**Windows：** 以管理员身份运行 `NetCatcher-amd64.exe`。
+
+## 从源码构建
+
+### 环境要求
 
 - Go 1.25+
 - Node.js 20+
-- Wails v3 CLI
-
-```bash
-go install github.com/wailsapp/wails/v3/cmd/wails3@latest
-```
-
-## 从源码构建
 
 ```bash
 # 克隆仓库
@@ -38,19 +47,9 @@ cd frontend && npm ci && npx vite build && cd ..
 # 构建 Go 二进制
 go build -o build/bin/netcatcher-app .
 
-# 或使用 Wails CLI（自动处理前端和后端）
-wails3 build
-```
-
-## 运行
-
-应用需要管理员/root 权限来修改路由表。
-
-```bash
+# 运行（需要管理员/root 权限来修改路由表）
 sudo ./build/bin/netcatcher-app
 ```
-
-Windows 下以管理员身份运行可执行文件。
 
 ## 使用说明
 
