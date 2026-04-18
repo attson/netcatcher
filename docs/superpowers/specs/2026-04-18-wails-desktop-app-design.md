@@ -13,7 +13,7 @@
 
 ## Tech Stack
 
-- **Backend**: Go + Wails v2
+- **Backend**: Go + Wails v3 (alpha, required for native system tray support — v2 does not support systray)
 - **Frontend**: Vue 3 (Composition API) + Vite + Vue Router + Pinia
 - **UI Theme**: GitHub Dark 深色主题（深蓝黑底，蓝色强调色，手写样式，不引入重型 UI 库）
 - **Build**: Wails CLI + GoReleaser + GitHub Actions
