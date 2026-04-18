@@ -17,6 +17,10 @@ onMounted(async () => {
     const result = await Call.ByName('main.App.GetAutoStart')
     autoStart.value = result
   } catch (e) { console.error('GetAutoStart failed:', e) }
+  try {
+    const result = await Call.ByName('main.App.GetNotifications')
+    notifications.value = result
+  } catch (e) { console.error('GetNotifications failed:', e) }
   loading.value = false
 })
 
@@ -30,7 +34,15 @@ async function toggleAutoStart() {
   }
 }
 
-function toggleNotifications() { notifications.value = !notifications.value }
+async function toggleNotifications() {
+  notifications.value = !notifications.value
+  try {
+    await Call.ByName('main.App.SetNotifications', notifications.value)
+  } catch (e) {
+    console.error('SetNotifications failed:', e)
+    notifications.value = !notifications.value
+  }
+}
 
 function changeLocale() {
   locale.value = currentLocale.value

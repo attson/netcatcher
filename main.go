@@ -4,11 +4,15 @@ import (
 	"embed"
 	_ "embed"
 	"log"
+	"os"
+	"runtime"
+	"strings"
 
 	"netcatcher/config"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
 //go:embed frontend/dist
@@ -32,7 +36,15 @@ func main() {
 		},
 	})
 
-	app := NewApp(configPath, wailsApp)
+	var notifSvc *notifications.NotificationService
+	if shouldRegisterNotifications() {
+		notifSvc = notifications.New()
+		wailsApp.RegisterService(application.NewService(notifSvc))
+	} else {
+		log.Printf("[info] system notifications unavailable (run from .app bundle on macOS)")
+	}
+
+	app := NewApp(configPath, wailsApp, notifSvc)
 
 	// Register App as a service so its exported methods are available to the frontend.
 	wailsApp.RegisterService(application.NewService(app))
@@ -82,4 +94,15 @@ func main() {
 	if err := wailsApp.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func shouldRegisterNotifications() bool {
+	if runtime.GOOS == "darwin" {
+		exe, err := os.Executable()
+		if err != nil {
+			return false
+		}
+		return strings.Contains(exe, ".app/Contents/MacOS/")
+	}
+	return true
 }

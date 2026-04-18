@@ -2,18 +2,21 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"time"
 
 	nc "netcatcher/netcatcher"
 
-	"github.com/gen2brain/beeep"
+	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
 type Notifier struct {
 	enabled bool
+	svc     *notifications.NotificationService
 }
 
-func NewNotifier() *Notifier {
-	return &Notifier{enabled: true}
+func NewNotifier(svc *notifications.NotificationService) *Notifier {
+	return &Notifier{enabled: true, svc: svc}
 }
 
 func (n *Notifier) SetEnabled(enabled bool) {
@@ -25,18 +28,25 @@ func (n *Notifier) IsEnabled() bool {
 }
 
 func (n *Notifier) OnStatusChange(status nc.InterfaceStatus) {
-	if !n.enabled {
+	if !n.enabled || n.svc == nil {
 		return
 	}
 
-	var title, message string
+	var title, body string
 	if status.Connected {
 		title = "Interface Connected"
-		message = fmt.Sprintf("%s is now online (gateway: %s)", status.InterfaceName, status.Gateway)
+		body = fmt.Sprintf("%s is now online (gateway: %s)", status.InterfaceName, status.Gateway)
 	} else {
 		title = "Interface Disconnected"
-		message = fmt.Sprintf("%s is now offline", status.InterfaceName)
+		body = fmt.Sprintf("%s is now offline", status.InterfaceName)
 	}
 
-	_ = beeep.Notify(title, message, "")
+	id := fmt.Sprintf("netcatcher-%s-%d", status.InterfaceName, time.Now().UnixNano())
+	if err := n.svc.SendNotification(notifications.NotificationOptions{
+		ID:    id,
+		Title: title,
+		Body:  body,
+	}); err != nil {
+		log.Printf("[warn] send notification failed: %v", err)
+	}
 }
