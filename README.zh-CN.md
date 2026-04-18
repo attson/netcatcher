@@ -25,7 +25,7 @@ NetCatcher 是一个桌面应用，用于监控网络接口并在连接时自动
 | macOS (Intel) | `NetCatcher-amd64.dmg` |
 | Windows | `NetCatcher-amd64.exe` |
 
-**macOS：** 打开 `.dmg` 文件，将 NetCatcher 拖入"应用程序"文件夹。应用需要 root 权限管理路由 — 使用 `sudo` 启动或授予相应权限。
+**macOS：** 打开 `.dmg` 文件，将 NetCatcher 拖入"应用程序"文件夹。首次添加路由时会弹出密码输入框请求授权，之后无需重复输入。
 
 **Windows：** 以管理员身份运行 `NetCatcher-amd64.exe`。
 
@@ -47,27 +47,24 @@ cd frontend && npm ci && npx vite build && cd ..
 # 构建 Go 二进制
 go build -o build/bin/netcatcher-app .
 
-# 运行（需要管理员/root 权限来修改路由表）
-sudo ./build/bin/netcatcher-app
+# 运行
+./build/bin/netcatcher-app
 ```
 
 ## 使用说明
 
 ### 仪表盘
 
-主界面展示所有已配置接口的概览。每个接口卡片显示名称、连接状态、网关 IP 和路由数量。点击卡片可展开查看具体路由，并可通过 **Ping** 按钮测试连通性。使用 **启动** / **停止** 按钮控制监控。
+主界面集成了状态监控和路由配置。系统网络接口以下拉列表展示，VPN 接口会显示服务名称（如 `ppp0 (我的VPN)`）方便识别。
+
+- 从下拉列表选择接口，点击 **添加接口**
+- 展开接口卡片，添加路由规则 — 域名、IP 或 CIDR 地址段
+- 点击 **保存并应用**（仅在有修改时显示）
+- 使用 **Ping** 测试路由连通性
+- 使用 **启动** / **停止** 控制监控
+- 域名路由会显示解析后的 IP 地址
 
 ![仪表盘](doc/screenshots/dashboard.png)
-
-### 路由配置
-
-配置哪些流量通过哪个网络接口：
-
-1. 输入网络接口名称（如 `ppp0`、`utun3`），点击 **添加接口**。
-2. 在接口下方输入路由目标 — 域名（`github.com`）、IP 地址（`192.168.1.1`）或 CIDR 地址段（`10.0.0.0/8`） — 点击 **添加**。
-3. 按需添加多条路由，然后点击 **保存并应用**。配置立即生效，无需重启。
-
-![路由配置](doc/screenshots/routes.png)
 
 ### 日志
 
@@ -117,7 +114,7 @@ sudo ./build/bin/netcatcher-app
 
 ### macOS
 
-应用需要 root 权限来调用 `route` 命令。使用 `sudo` 启动，或为生产构建授予相应权限。
+首次添加路由时弹出密码输入框请求授权。授权后会创建 sudoers 规则，后续操作无需再次输入密码。退出 app 时路由会自动清理。
 
 ### Windows
 

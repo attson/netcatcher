@@ -25,7 +25,7 @@ Download the latest release from the [Releases](https://github.com/attson/netcat
 | macOS (Intel) | `NetCatcher-amd64.dmg` |
 | Windows | `NetCatcher-amd64.exe` |
 
-**macOS:** Open the `.dmg` and drag NetCatcher to Applications. The app requires root privileges to manage routes — launch with `sudo` or grant entitlements.
+**macOS:** Open the `.dmg` and drag NetCatcher to Applications. On first route operation the app prompts for your admin password once — no need for `sudo`.
 
 **Windows:** Run `NetCatcher-amd64.exe` as Administrator.
 
@@ -47,27 +47,24 @@ cd frontend && npm ci && npx vite build && cd ..
 # Build Go binary
 go build -o build/bin/netcatcher-app .
 
-# Run (requires admin/root privileges for route management)
-sudo ./build/bin/netcatcher-app
+# Run
+./build/bin/netcatcher-app
 ```
 
 ## Usage
 
 ### Dashboard
 
-The main screen shows an overview of all configured interfaces. Each interface card displays its name, connection status, gateway IP, and route count. Click a card to expand it and see individual routes with a **Ping** button for connectivity testing. Use the **Start** / **Stop** button to control monitoring.
+The main screen shows status overview and inline route configuration. System network interfaces are listed in a dropdown with VPN service names (e.g. `ppp0 (My VPN)`) for easy identification.
+
+- Select an interface from the dropdown and click **Add Interface**
+- Expand the interface card to add routes — domain names, IPs, or CIDR blocks
+- Click **Save & Apply** (appears only when changes are pending)
+- Use **Ping** to test route connectivity
+- Use **Start** / **Stop** to control monitoring
+- Domain routes show their resolved IP addresses
 
 ![Dashboard](doc/screenshots/dashboard.png)
-
-### Routes
-
-Configure which traffic goes through which interface:
-
-1. Enter a network interface name (e.g. `ppp0`, `utun3`) and click **Add Interface**.
-2. Under the interface, enter a route target — a domain name (`github.com`), an IP address (`192.168.1.1`), or a CIDR block (`10.0.0.0/8`) — and click **Add**.
-3. Add as many routes as needed, then click **Save & Apply**. The config reloads immediately without restarting.
-
-![Routes](doc/screenshots/routes.png)
 
 ### Logs
 
@@ -117,7 +114,7 @@ The `name` field must match the OS network interface name exactly (e.g. the VPN 
 
 ### macOS
 
-The app requires root to call the `route` command. Launch with `sudo`, or grant the binary the appropriate entitlements for a production build.
+The app prompts for admin credentials once on the first route operation. A sudoers rule is created to allow passwordless `route` calls afterwards. Routes are automatically cleaned up when the app exits.
 
 ### Windows
 
