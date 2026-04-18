@@ -14,6 +14,7 @@ import (
 	nc "netcatcher/netcatcher"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
 type PingResult struct {
@@ -27,15 +28,17 @@ type App struct {
 	ctx        context.Context
 	manager    *Manager
 	notifier   *Notifier
+	notifSvc   *notifications.NotificationService
 	configPath string
 	logBuf     *logbuffer.Buffer
 	app        *application.App
 }
 
-func NewApp(configPath string, wailsApp *application.App) *App {
+func NewApp(configPath string, wailsApp *application.App, notifSvc *notifications.NotificationService) *App {
 	a := &App{
 		configPath: configPath,
 		app:        wailsApp,
+		notifSvc:   notifSvc,
 	}
 
 	a.logBuf = logbuffer.New(1000, func(e logbuffer.Entry) {
@@ -52,7 +55,7 @@ func NewApp(configPath string, wailsApp *application.App) *App {
 		cfg = config.Config{Interfaces: []config.Interface{}}
 	}
 
-	a.notifier = NewNotifier()
+	a.notifier = NewNotifier(notifSvc)
 
 	a.manager = NewManager(cfg, func(status nc.InterfaceStatus) {
 		if a.app != nil {
@@ -69,6 +72,18 @@ func (a *App) OnStartup(ctx context.Context) {
 	a.manager.Start()
 	if a.app != nil {
 		a.app.Event.Emit("monitor:started", nil)
+	}
+	if a.notifSvc != nil {
+		go func() {
+			granted, err := a.notifSvc.RequestNotificationAuthorization()
+			if err != nil {
+				log.Printf("[warn] notification authorization request failed: %v", err)
+				return
+			}
+			if !granted {
+				log.Printf("[info] notification authorization denied by user")
+			}
+		}()
 	}
 }
 
