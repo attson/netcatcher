@@ -27,6 +27,14 @@ Download the latest release from the [Releases](https://github.com/attson/netcat
 
 **macOS:** Open the `.dmg` and drag NetCatcher to Applications. On first route operation the app prompts for your admin password once — no need for `sudo`.
 
+> **"NetCatcher is damaged and can't be opened"?** The app is ad-hoc signed, not notarized with an Apple Developer ID, so Gatekeeper rejects it once macOS adds the quarantine attribute during DMG download. Remove the attribute once:
+>
+> ```bash
+> sudo xattr -cr /Applications/NetCatcher.app
+> ```
+>
+> Then open normally. You only need to do this after each update.
+
 **Windows:** Run `NetCatcher-amd64.exe` as Administrator.
 
 ## Building from Source

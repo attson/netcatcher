@@ -27,6 +27,14 @@ NetCatcher 是一个桌面应用，用于监控网络接口并在连接时自动
 
 **macOS：** 打开 `.dmg` 文件，将 NetCatcher 拖入"应用程序"文件夹。首次添加路由时会弹出密码输入框请求授权，之后无需重复输入。
 
+> **提示 "NetCatcher 已损坏，无法打开"？** 应用只做了 ad-hoc 签名，没有经过 Apple Developer ID 公证，所以下载 DMG 时 macOS 加上的 quarantine 属性会被 Gatekeeper 拦截。执行一次以下命令即可：
+>
+> ```bash
+> sudo xattr -cr /Applications/NetCatcher.app
+> ```
+>
+> 然后正常打开。每次更新后重复一次即可。
+
 **Windows：** 以管理员身份运行 `NetCatcher-amd64.exe`。
 
 ## 从源码构建

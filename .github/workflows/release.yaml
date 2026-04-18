@@ -108,6 +108,13 @@ jobs:
           </plist>
           PLIST
 
+          # Re-sign the Mach-O with the bundle identifier. The Go linker-signed
+          # "a.out" identifier doesn't match CFBundleIdentifier, which on
+          # macOS Sequoia causes "is damaged" errors once the DMG is opened
+          # (com.apple.quarantine + mismatched identifier trips Gatekeeper).
+          codesign --force --sign - --identifier com.attson.netcatcher \
+            "$APP/Contents/MacOS/NetCatcher"
+
           DMG_DIR="build/dmg-contents"
           mkdir -p "$DMG_DIR"
           mv build/NetCatcher.app "$DMG_DIR/"
