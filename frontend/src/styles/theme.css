@@ -42,6 +42,40 @@ body {
 }
 .titlebar-title { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  --wails-draggable: none;
+}
+
+.win-btn {
+  width: 28px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  line-height: 1;
+}
+
+.win-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.win-close:hover {
+  background: var(--error);
+  color: #fff;
+}
+
 .layout { display: flex; flex: 1; overflow: hidden; }
 
 .sidebar {
