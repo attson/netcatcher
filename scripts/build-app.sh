@@ -68,9 +68,18 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-# Ad-hoc sign so the bundle identifier is honored (unsigned bundles can
-# have notification delivery quirks on macOS).
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
+# Re-sign the Mach-O with the bundle identifier so the embedded signature
+# (Go's linker-signed "a.out" identifier) matches CFBundleIdentifier. On
+# macOS Sequoia the mismatch triggers "is damaged" errors.
+codesign --force --sign - --identifier com.attson.netcatcher \
+  "$APP/Contents/MacOS/NetCatcher"
+
+# Strip extended attributes that can trip Gatekeeper on locally-built apps.
+xattr -cr "$APP" 2>/dev/null || true
 
 echo "==> Done: $APP"
+echo
 echo "Run with: open $APP"
+echo
+echo "If macOS says '\"NetCatcher\" 已损坏' or '\"NetCatcher\" is damaged':"
+echo "  sudo xattr -cr $APP && open $APP"
