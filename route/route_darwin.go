@@ -6,26 +6,67 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/user"
 	"strings"
+	"sync"
 )
+
+const sudoersFile = "/etc/sudoers.d/netcatcher"
+
+var authOnce sync.Once
 
 func isRoot() bool {
 	return os.Geteuid() == 0
+}
+
+func ensureAuth() {
+	if isRoot() {
+		return
+	}
+	authOnce.Do(func() {
+		u, err := user.Current()
+		if err != nil {
+			log.Printf("[warn] get current user failed: %v", err)
+			return
+		}
+		rule := fmt.Sprintf("%s ALL=(ALL) NOPASSWD: /sbin/route", u.Username)
+		cmd := fmt.Sprintf(`do shell script "echo '%s' > %s && chmod 0440 %s" with administrator privileges`, rule, sudoersFile, sudoersFile)
+		command := exec.Command("osascript", "-e", cmd)
+		command.Stderr = log.Writer()
+		command.Stdout = log.Writer()
+		if err := command.Run(); err != nil {
+			log.Printf("[error] admin authorization failed: %v", err)
+		} else {
+			log.Printf("[info] admin authorization granted")
+		}
+	})
+}
+
+func Cleanup() {
+	if isRoot() {
+		return
+	}
+	if _, err := os.Stat(sudoersFile); err == nil {
+		cmd := exec.Command("sudo", "rm", "-f", sudoersFile)
+		cmd.Stderr = log.Writer()
+		cmd.Stdout = log.Writer()
+		_ = cmd.Run()
+		log.Printf("[info] admin authorization cleaned up")
+	}
 }
 
 func runBatch(cmds []string) error {
 	if len(cmds) == 0 {
 		return nil
 	}
+	ensureAuth()
 	joined := strings.Join(cmds, " ; ")
+	var command *exec.Cmd
 	if isRoot() {
-		command := exec.Command("sh", "-c", joined)
-		command.Stderr = log.Writer()
-		command.Stdout = log.Writer()
-		return command.Run()
+		command = exec.Command("sh", "-c", joined)
+	} else {
+		command = exec.Command("sudo", "sh", "-c", joined)
 	}
-	script := fmt.Sprintf(`do shell script "%s" with administrator privileges`, joined)
-	command := exec.Command("osascript", "-e", script)
 	command.Stderr = log.Writer()
 	command.Stdout = log.Writer()
 	return command.Run()
