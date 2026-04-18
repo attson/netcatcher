@@ -12,11 +12,17 @@ jobs:
         include:
           - os: macos-latest
             platform: darwin
-            arch: universal
+            goarch: arm64
+          - os: macos-latest
+            platform: darwin
+            goarch: amd64
           - os: windows-latest
             platform: windows
-            arch: amd64
+            goarch: amd64
     runs-on: ${{ matrix.os }}
+    env:
+      GOARCH: ${{ matrix.goarch }}
+      CGO_ENABLED: 1
     steps:
       - uses: actions/checkout@v4
 
@@ -36,22 +42,17 @@ jobs:
       - name: Build frontend
         run: cd frontend && npx vite build
 
-      - name: Build Go binary (macOS)
-        if: matrix.platform == 'darwin'
+      - name: Build Go binary
         run: |
           mkdir -p build/bin
-          go build -o build/bin/netcatcher-darwin-universal .
-
-      - name: Build Go binary (Windows)
-        if: matrix.platform == 'windows'
-        run: |
-          mkdir -p build/bin
-          go build -o build/bin/netcatcher-windows-amd64.exe .
+          EXT=""
+          if [ "${{ matrix.platform }}" = "windows" ]; then EXT=".exe"; fi
+          go build -o "build/bin/netcatcher-${{ matrix.platform }}-${{ matrix.goarch }}${EXT}" .
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: netcatcher-${{ matrix.platform }}-${{ matrix.arch }}
+          name: netcatcher-${{ matrix.platform }}-${{ matrix.goarch }}
           path: build/bin/*
 
   release:
