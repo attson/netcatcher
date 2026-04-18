@@ -26,6 +26,7 @@ type PingResult struct {
 type App struct {
 	ctx        context.Context
 	manager    *Manager
+	notifier   *Notifier
 	configPath string
 	logBuf     *logbuffer.Buffer
 	app        *application.App
@@ -51,10 +52,13 @@ func NewApp(configPath string, wailsApp *application.App) *App {
 		cfg = config.Config{Interfaces: []config.Interface{}}
 	}
 
+	a.notifier = NewNotifier()
+
 	a.manager = NewManager(cfg, func(status nc.InterfaceStatus) {
 		if a.app != nil {
 			a.app.Event.Emit("interface:status-changed", status)
 		}
+		a.notifier.OnStatusChange(status)
 	})
 
 	return a
@@ -148,6 +152,14 @@ func (a *App) GetAutoStart() bool {
 
 func (a *App) SetAutoStart(enabled bool) error {
 	return setAutoStart(enabled)
+}
+
+func (a *App) SetNotifications(enabled bool) {
+	a.notifier.SetEnabled(enabled)
+}
+
+func (a *App) GetNotifications() bool {
+	return a.notifier.IsEnabled()
 }
 
 func (a *App) GetNetworkInterfaces() []string {
