@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
@@ -35,6 +36,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Install mingw-w64 (Windows CGO)
+        if: matrix.platform == 'windows'
+        uses: bwoodsend/setup-winlibs-action@v1
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
@@ -91,6 +96,7 @@ jobs:
 
       - name: Rename Windows binary
         if: matrix.platform == 'windows'
+        shell: bash
         run: |
           mv build/bin/netcatcher.exe "build/bin/NetCatcher-${{ matrix.goarch }}.exe"
 
