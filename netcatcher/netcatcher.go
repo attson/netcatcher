@@ -1,6 +1,7 @@
 package netcatcher
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -9,117 +10,136 @@ import (
 	"time"
 )
 
-type Status int
+type InterfaceStatus struct {
+	InterfaceName string        `json:"interfaceName"`
+	Connected     bool          `json:"connected"`
+	Gateway       string        `json:"gateway"`
+	Routes        []RouteStatus `json:"routes"`
+}
+
+type RouteStatus struct {
+	For     string `json:"for"`
+	Ip      string `json:"ip"`
+	Gateway string `json:"gateway"`
+	Active  bool   `json:"active"`
+}
+
+type StatusCallback func(status InterfaceStatus)
+
+type status int
 
 const (
-	_ Status = iota
-	Connected
-	DisConnected
+	_ status = iota
+	connected
+	disconnected
 )
 
-func (s Status) String() string {
-	switch s {
-	case Connected:
-		return "connected"
-	case DisConnected:
-		return "disconnected"
-	}
-
-	return "unknown"
+type routeEntry struct {
+	forAddr string
+	ip      string
+	gateway string
+	mask    net.IPMask
 }
 
-type Route struct {
-	For     string
-	Ip      string
-	Gateway string
-	Mask    net.IPMask
+func (r routeEntry) String() string {
+	return fmt.Sprintf("%s -> %s @ %s", r.forAddr, r.ip, r.gateway)
 }
 
-func (r Route) String() string {
-	return fmt.Sprintf("%s -> %s @ %s", r.For, r.Ip, r.Gateway)
-}
-
-type ChangeEvent struct {
-	Status Status
-	Addr   net.Addr
+type changeEvent struct {
+	status status
+	addr   net.Addr
 }
 
 type NetCatcher struct {
-	config config.Interface
-
-	onChange chan ChangeEvent
-	status   Status
-
-	routes []Route
+	config   config.Interface
+	onChange chan changeEvent
+	current  status
+	routes   []routeEntry
+	onStatus StatusCallback
 }
 
-func NewNetCatcher(config config.Interface) *NetCatcher {
-	return &NetCatcher{config: config, onChange: make(chan ChangeEvent)}
+func NewNetCatcher(cfg config.Interface, onStatus StatusCallback) *NetCatcher {
+	return &NetCatcher{
+		config:   cfg,
+		onChange: make(chan changeEvent),
+		onStatus: onStatus,
+	}
+}
+
+func (n *NetCatcher) GetStatus() InterfaceStatus {
+	s := InterfaceStatus{
+		InterfaceName: n.config.Name,
+		Connected:     n.current == connected,
+		Routes:        make([]RouteStatus, len(n.routes)),
+	}
+	for i, r := range n.routes {
+		s.Routes[i] = RouteStatus{
+			For:     r.forAddr,
+			Ip:      r.ip,
+			Gateway: r.gateway,
+			Active:  n.current == connected,
+		}
+	}
+	if len(n.routes) > 0 {
+		s.Gateway = n.routes[0].gateway
+	}
+	return s
+}
+
+func (n *NetCatcher) emitStatus() {
+	if n.onStatus != nil {
+		n.onStatus(n.GetStatus())
+	}
 }
 
 func (n *NetCatcher) resolveRoutes(gateway string) {
-	n.routes = []Route{}
+	n.routes = []routeEntry{}
 	for _, addr := range n.config.Routes {
 		_, ipnet, err := net.ParseCIDR(addr)
-
 		if err == nil {
-			n.routes = append(n.routes, Route{
-				For:     addr,
-				Ip:      addr,
-				Mask:    ipnet.Mask,
-				Gateway: gateway,
+			n.routes = append(n.routes, routeEntry{
+				forAddr: addr, ip: addr, mask: ipnet.Mask, gateway: gateway,
 			})
 			continue
 		}
-
 		if net.ParseIP(addr) != nil {
-			n.routes = append(n.routes, Route{
-				For:     addr,
-				Ip:      addr,
-				Mask:    nil,
-				Gateway: gateway,
+			n.routes = append(n.routes, routeEntry{
+				forAddr: addr, ip: addr, mask: nil, gateway: gateway,
 			})
 			continue
 		}
-
 		ips, err := net.LookupIP(addr)
 		if err != nil {
 			log.Printf("%s: [warn] lookup %s fail %v\n", n.config.Name, addr, err)
 		}
 		for _, ip := range ips {
-			n.routes = append(n.routes, Route{
-				For:     addr,
-				Ip:      ip.String(),
-				Gateway: gateway,
+			n.routes = append(n.routes, routeEntry{
+				forAddr: addr, ip: ip.String(), gateway: gateway,
 			})
 		}
-
-		continue
 	}
 }
 
-func (n *NetCatcher) addRoutersTo(addr net.Addr) {
+func (n *NetCatcher) addRoutesTo(addr net.Addr) {
 	ip, _, err := net.ParseCIDR(addr.String())
 	if err != nil {
 		log.Printf("%s: [error] parse %s CIDR fail %v", n.config.Name, addr.String(), err)
 		return
 	}
-
 	n.resolveRoutes(ip.String())
 	for _, r := range n.routes {
-		err := route.AddRoute(r.Ip, r.Gateway, r.Mask)
+		err := route.AddRoute(r.ip, r.gateway, r.mask)
 		if err != nil {
 			log.Printf("%s: [warn] add route fail %s %v", n.config.Name, r, err)
 		} else {
 			log.Printf("%s: [debug] add route %s", n.config.Name, r)
 		}
-
 	}
 }
 
-func (n *NetCatcher) clearRouters() {
+func (n *NetCatcher) clearRoutes() {
 	for _, r := range n.routes {
-		err := route.DeleteRoute(r.Ip, r.Gateway, r.Mask)
+		err := route.DeleteRoute(r.ip, r.gateway, r.mask)
 		if err != nil {
 			log.Printf("%s: [warn] delete route fail %s %v", n.config.Name, r, err)
 		} else {
@@ -128,57 +148,57 @@ func (n *NetCatcher) clearRouters() {
 	}
 }
 
-func (n *NetCatcher) Watch() {
+func (n *NetCatcher) Watch(ctx context.Context) {
+	poll := make(chan changeEvent)
+
 	go func() {
 		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			i, err := net.InterfaceByName(n.config.Name)
 			if err != nil {
 				if opErr, ok := err.(*net.OpError); ok {
 					if opErr.Unwrap().Error() == "no such network interface" {
-						n.onChange <- ChangeEvent{
-							Status: DisConnected,
-						}
+						poll <- changeEvent{status: disconnected}
+						time.Sleep(time.Second)
 						continue
 					}
 				}
-
 				log.Printf("%s: [warn] get interface fail %v\n", n.config.Name, err)
 			} else {
 				addrs, err := i.Addrs()
 				if err != nil || len(addrs) == 0 {
 					log.Printf("%s: [warn] get interface addr fail %v\n", n.config.Name, err)
 				} else {
-					n.onChange <- ChangeEvent{
-						Status: Connected,
-						Addr:   addrs[0],
-					}
+					poll <- changeEvent{status: connected, addr: addrs[0]}
 				}
 			}
-
 			time.Sleep(time.Second)
 		}
 	}()
 
 	for {
 		select {
-		case event := <-n.onChange:
-			if n.status == event.Status {
+		case <-ctx.Done():
+			n.clearRoutes()
+			return
+		case event := <-poll:
+			if n.current == event.status {
 				break
 			}
-
-			log.Printf("%s: [info] interface status is %s\n", n.config.Name, event.Status.String())
-
-			n.status = event.Status
-			if event.Status == Connected {
-				n.addRoutersTo(event.Addr)
-			} else {
-				// when interface disconnect. the system will clean up routes
-				// n.clearRouters()
+			log.Printf("%s: [info] interface status changed to %v\n", n.config.Name, event.status == connected)
+			n.current = event.status
+			if event.status == connected {
+				n.addRoutesTo(event.addr)
 			}
+			n.emitStatus()
 		}
 	}
 }
 
 func (n *NetCatcher) Stop() {
-	n.clearRouters()
+	n.clearRoutes()
 }

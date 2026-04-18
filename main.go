@@ -1,85 +1,85 @@
 package main
 
 import (
-	"encoding/json"
-	"flag"
+	"embed"
+	_ "embed"
 	"log"
-	"net"
+
 	"netcatcher/config"
-	"netcatcher/netcatcher"
-	"os"
-	"os/signal"
-	"syscall"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-func waitStop() {
-	// hook exit signal
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
-	s := <-sigs
+//go:embed frontend/dist
+var assets embed.FS
 
-	for _, n := range netcatchers {
-		n.Stop()
-	}
-	log.Printf("stop netcatcher by signal [%v]", s)
-
-	os.Exit(0)
-}
-
-var netcatchers []*netcatcher.NetCatcher
+//go:embed build/appicon.png
+var appIcon []byte
 
 func main() {
-	configPath := flag.String("c", "config.json", "config file path")
-	logPath := flag.String("l", "", "log file path")
-	flag.Parse()
+	configPath := config.DefaultConfigPath()
 
-	if *logPath != "" {
-		open, err := os.OpenFile(*logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-		if err != nil {
-			panic(err)
-		}
-		log.SetOutput(open)
+	wailsApp := application.New(application.Options{
+		Name:        "NetCatcher",
+		Description: "Network route manager",
+		Icon:        appIcon,
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+		},
+		Mac: application.MacOptions{
+			ActivationPolicy: application.ActivationPolicyAccessory,
+		},
+	})
+
+	app := NewApp(configPath, wailsApp)
+
+	// Register App as a service so its exported methods are available to the frontend.
+	wailsApp.RegisterService(application.NewService(app))
+
+	// Create main window
+	mainWindow := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:            "NetCatcher",
+		Width:            900,
+		Height:           600,
+		MinWidth:         700,
+		MinHeight:        450,
+		Frameless:        false,
+		URL:              "/",
+		BackgroundColour: application.NewRGBA(13, 17, 23, 255),
+	})
+
+	// Hide window instead of closing (intercept close via hook).
+	mainWindow.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
+		event.Cancel()
+		mainWindow.Hide()
+	})
+
+	// System tray
+	trayMenu := wailsApp.Menu.New()
+	trayMenu.Add("Show Window").OnClick(func(ctx *application.Context) {
+		mainWindow.Show()
+		mainWindow.Focus()
+	})
+	trayMenu.AddSeparator()
+	trayMenu.Add("Quit").OnClick(func(ctx *application.Context) {
+		wailsApp.Quit()
+	})
+
+	systray := wailsApp.SystemTray.New()
+	systray.SetIcon(appIcon)
+	systray.SetMenu(trayMenu)
+
+
+	// Register shutdown hook so monitoring stops cleanly.
+	wailsApp.OnShutdown(func() {
+		app.OnShutdown()
+	})
+
+	// Start monitoring on launch.
+	app.OnStartup(nil)
+
+	if err := wailsApp.Run(); err != nil {
+		log.Fatal(err)
 	}
-
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		panic(err)
-	}
-
-	for _, i := range interfaces {
-		addrs, err := i.Addrs()
-		if err != nil {
-			panic(err)
-		}
-		log.Printf("%s: ", i.Name)
-		for _, a := range addrs {
-			log.Printf("\t%s", a.String())
-		}
-	}
-
-	log.Printf("config file: %s\n", *configPath)
-
-	file, err := os.ReadFile(*configPath)
-	if err != nil {
-		panic(err)
-	}
-
-	c := config.Config{}
-
-	err = json.Unmarshal(file, &c)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, s := range c.Interfaces {
-		n := netcatcher.NewNetCatcher(s)
-
-		netcatchers = append(netcatchers, n)
-
-		go n.Watch()
-	}
-
-	log.Printf("netcatcher started...\n")
-
-	waitStop()
 }
