@@ -52,9 +52,45 @@ sudo ./build/bin/netcatcher-app
 
 On Windows, run the executable as Administrator.
 
+## Usage
+
+### Dashboard
+
+The main screen shows an overview of all configured interfaces. Each interface card displays its name, connection status, gateway IP, and route count. Click a card to expand it and see individual routes with a **Ping** button for connectivity testing. Use the **Start** / **Stop** button to control monitoring.
+
+![Dashboard](doc/screenshots/dashboard.png)
+
+### Routes
+
+Configure which traffic goes through which interface:
+
+1. Enter a network interface name (e.g. `ppp0`, `utun3`) and click **Add Interface**.
+2. Under the interface, enter a route target — a domain name (`github.com`), an IP address (`192.168.1.1`), or a CIDR block (`10.0.0.0/8`) — and click **Add**.
+3. Add as many routes as needed, then click **Save & Apply**. The config reloads immediately without restarting.
+
+![Routes](doc/screenshots/routes.png)
+
+### Logs
+
+Real-time log viewer showing interface up/down events, route add/remove operations, and errors. Filter by log level or search by keyword. Scrolling up pauses auto-scroll; scroll back to the bottom to resume.
+
+![Logs](doc/screenshots/logs.png)
+
+### Settings
+
+- **Launch at startup** — register/unregister the app for auto-start on login.
+- **Notifications** — toggle system notifications when interfaces connect or disconnect.
+- **Language** — switch between English and Chinese. The preference persists across restarts.
+
+![Settings](doc/screenshots/settings.png)
+
+### System Tray
+
+The app runs in the system tray. Closing the window hides it to the tray — the app keeps running and monitoring in the background. Right-click the tray icon to show the window or quit.
+
 ## Configuration
 
-Config is stored at a platform-specific path and managed through the GUI settings:
+Config is stored at a platform-specific path and managed through the GUI:
 
 - macOS: `~/Library/Application Support/NetCatcher/config.json`
 - Windows: `%APPDATA%\NetCatcher\config.json`
