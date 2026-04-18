@@ -44,7 +44,7 @@ func main() {
 		Height:           600,
 		MinWidth:         700,
 		MinHeight:        450,
-		Frameless:        true,
+		Frameless:        false,
 		URL:              "/",
 		BackgroundColour: application.NewRGBA(13, 17, 23, 255),
 	})

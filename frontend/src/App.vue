@@ -1,15 +1,11 @@
 <script setup>
 import { onMounted } from 'vue'
-import { Events, Window } from '@wailsio/runtime'
+import { Events } from '@wailsio/runtime'
 import { useMonitorStore } from './stores/monitor'
 import { useLogStore } from './stores/logs'
 
 const monitor = useMonitorStore()
 const logStore = useLogStore()
-
-function minimize() { Window.Minimise() }
-function maximize() { Window.ToggleMaximise() }
-function close() { Window.Close() }
 
 onMounted(async () => {
   await monitor.fetchStatus()
@@ -21,14 +17,6 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="titlebar">
-    <span class="titlebar-title">NetCatcher</span>
-    <div class="window-controls" style="--wails-draggable: none;">
-      <button class="win-btn win-minimize" @click="minimize" title="Minimize">&minus;</button>
-      <button class="win-btn win-maximize" @click="maximize" title="Maximize">&square;</button>
-      <button class="win-btn win-close" @click="close" title="Close">&times;</button>
-    </div>
-  </div>
   <div class="layout">
     <nav class="sidebar">
       <ul class="sidebar-nav">
