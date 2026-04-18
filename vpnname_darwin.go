@@ -16,14 +16,16 @@ func getVPNServiceNames() map[string]string {
 		return result
 	}
 
-	reEntry := regexp.MustCompile(`\(([^)]+)\)\s+(\S+)\s+"([^"]+)"`)
+	reUUID := regexp.MustCompile(`([0-9A-Fa-f-]{36})`)
+	reName := regexp.MustCompile(`"([^"]+)"`)
 	for _, line := range strings.Split(string(out), "\n") {
-		matches := reEntry.FindStringSubmatch(line)
-		if len(matches) < 4 {
+		uuidMatch := reUUID.FindStringSubmatch(line)
+		nameMatch := reName.FindStringSubmatch(line)
+		if len(uuidMatch) < 2 || len(nameMatch) < 2 {
 			continue
 		}
-		uuid := matches[2]
-		name := matches[3]
+		uuid := uuidMatch[1]
+		name := nameMatch[1]
 
 		ifaceOut, err := exec.Command("sh", "-c",
 			`echo "show State:/Network/Service/`+uuid+`/IPv4" | scutil | grep InterfaceName | awk '{print $3}'`).Output()
