@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"strings"
 	"sync"
 )
 
@@ -45,43 +44,31 @@ func ensureAuth() {
 func Cleanup() {
 }
 
-func runBatch(cmds []string) error {
-	if len(cmds) == 0 {
-		return nil
-	}
+func runRoute(args ...string) error {
 	ensureAuth()
-	joined := strings.Join(cmds, " ; ")
 	var command *exec.Cmd
 	if isRoot() {
-		command = exec.Command("sh", "-c", joined)
+		command = exec.Command("/sbin/route", args...)
 	} else {
-		command = exec.Command("sudo", "sh", "-c", joined)
+		command = exec.Command("sudo", append([]string{"/sbin/route"}, args...)...)
 	}
 	command.Stderr = log.Writer()
 	command.Stdout = log.Writer()
 	return command.Run()
 }
 
-func addCmd(ip, gateway string, mask net.IPMask) string {
-	if mask != nil {
-		return fmt.Sprintf("route add -net %s %s", ip, gateway)
-	}
-	return fmt.Sprintf("route add -host %s %s", ip, gateway)
-}
-
-func deleteCmd(ip, gateway string, mask net.IPMask) string {
-	if mask != nil {
-		return fmt.Sprintf("route delete -net %s %s", ip, gateway)
-	}
-	return fmt.Sprintf("route delete -host %s %s", ip, gateway)
-}
-
 func AddRoute(ip, gateway string, mask net.IPMask) error {
-	return runBatch([]string{addCmd(ip, gateway, mask)})
+	if mask != nil {
+		return runRoute("add", "-net", ip, gateway)
+	}
+	return runRoute("add", "-host", ip, gateway)
 }
 
 func DeleteRoute(ip, gateway string, mask net.IPMask) error {
-	return runBatch([]string{deleteCmd(ip, gateway, mask)})
+	if mask != nil {
+		return runRoute("delete", "-net", ip, gateway)
+	}
+	return runRoute("delete", "-host", ip, gateway)
 }
 
 type RouteSpec struct {
@@ -91,17 +78,19 @@ type RouteSpec struct {
 }
 
 func AddRoutes(routes []RouteSpec) error {
-	cmds := make([]string, len(routes))
-	for i, r := range routes {
-		cmds[i] = addCmd(r.Ip, r.Gateway, r.Mask)
+	for _, r := range routes {
+		if err := AddRoute(r.Ip, r.Gateway, r.Mask); err != nil {
+			log.Printf("[warn] add route %s failed: %v", r.Ip, err)
+		}
 	}
-	return runBatch(cmds)
+	return nil
 }
 
 func DeleteRoutes(routes []RouteSpec) error {
-	cmds := make([]string, len(routes))
-	for i, r := range routes {
-		cmds[i] = deleteCmd(r.Ip, r.Gateway, r.Mask)
+	for _, r := range routes {
+		if err := DeleteRoute(r.Ip, r.Gateway, r.Mask); err != nil {
+			log.Printf("[warn] delete route %s failed: %v", r.Ip, err)
+		}
 	}
-	return runBatch(cmds)
+	return nil
 }
