@@ -12,7 +12,6 @@ import (
 	"netcatcher/config"
 	"netcatcher/logbuffer"
 	nc "netcatcher/netcatcher"
-	"netcatcher/route"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -75,7 +74,6 @@ func (a *App) OnStartup(ctx context.Context) {
 
 func (a *App) OnShutdown() {
 	a.manager.Stop()
-	route.Cleanup()
 }
 
 func (a *App) GetConfig() config.Config {
