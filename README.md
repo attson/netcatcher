@@ -52,9 +52,40 @@ sudo ./build/bin/netcatcher-app
 
 On Windows, run the executable as Administrator.
 
+## Usage
+
+### Dashboard
+
+The main screen shows an overview of all configured interfaces. Each interface card displays its name, connection status, gateway IP, and route count. Click a card to expand it and see individual routes. Use the **Start** / **Stop** button to control monitoring.
+
+### Adding Routes
+
+1. Go to the **Routes** page.
+2. Enter a network interface name (e.g. `ppp0`, `utun3`) and click **Add Interface**.
+3. Under the interface, enter a route target — a domain name (`github.com`), an IP address (`192.168.1.1`), or a CIDR block (`10.0.0.0/8`) — and click **Add**.
+4. Add as many routes as needed, then click **Save & Apply**. The app reloads the config immediately without restarting.
+
+### Testing Connectivity
+
+In the Dashboard, expand an interface card and click **Ping** next to any route. The result shows latency or "Unreachable".
+
+### Logs
+
+The **Logs** page shows real-time events (interface up/down, route add/remove, errors). Filter by log level or search by keyword. Scrolling up pauses auto-scroll; scroll back to the bottom to resume.
+
+### Settings
+
+- **Launch at startup** — register/unregister the app for auto-start on login.
+- **Notifications** — toggle system notifications when interfaces connect or disconnect.
+- **Language** — switch between English and Chinese. The preference is saved and persists across restarts.
+
+### System Tray
+
+The app runs in the system tray. Closing the window hides it to the tray — the app keeps running and monitoring in the background. Right-click the tray icon to show the window or quit.
+
 ## Configuration
 
-Config is stored at a platform-specific path and managed through the GUI settings:
+Config is stored at a platform-specific path and managed through the GUI:
 
 - macOS: `~/Library/Application Support/NetCatcher/config.json`
 - Windows: `%APPDATA%\NetCatcher\config.json`
