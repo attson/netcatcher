@@ -1,7 +1,9 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useConfigStore } from '../stores/config'
 
+const { t } = useI18n()
 const configStore = useConfigStore()
 const newIfaceName = ref('')
 const newRoutes = ref({})
@@ -34,45 +36,45 @@ function validateRoute(route) {
 async function save() {
   try {
     await configStore.saveConfig()
-    saveMessage.value = 'Saved successfully'
+    saveMessage.value = t('routes.saved')
     setTimeout(() => { saveMessage.value = '' }, 2000)
-  } catch (e) { saveMessage.value = 'Save failed: ' + e }
+  } catch (e) { saveMessage.value = t('routes.saveFailed') + e }
 }
 </script>
 
 <template>
   <div>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h1 style="margin-bottom: 0;">Route Configuration</h1>
+      <h1 style="margin-bottom: 0;">{{ $t('routes.title') }}</h1>
       <div style="display: flex; align-items: center; gap: 12px;">
         <span v-if="saveMessage" style="color: var(--success); font-size: 13px;">{{ saveMessage }}</span>
         <button class="btn btn-primary" @click="save" :disabled="configStore.saving">
-          {{ configStore.saving ? 'Saving...' : 'Save & Apply' }}
+          {{ configStore.saving ? $t('routes.saving') : $t('routes.saveApply') }}
         </button>
       </div>
     </div>
     <div style="display: flex; gap: 8px; margin-bottom: 20px;">
-      <input v-model="newIfaceName" placeholder="Interface name (e.g. ppp0)" @keyup.enter="addInterface" style="flex: 1;" />
-      <button class="btn" @click="addInterface">Add Interface</button>
+      <input v-model="newIfaceName" :placeholder="$t('routes.ifacePlaceholder')" @keyup.enter="addInterface" style="flex: 1;" />
+      <button class="btn" @click="addInterface">{{ $t('routes.addInterface') }}</button>
     </div>
     <div v-if="configStore.config.interfaces.length === 0" class="card">
-      <p style="color: var(--text-secondary); text-align: center; padding: 20px;">No interfaces configured. Add one above.</p>
+      <p style="color: var(--text-secondary); text-align: center; padding: 20px;">{{ $t('routes.noInterfaces') }}</p>
     </div>
     <div v-for="(iface, ifaceIdx) in configStore.config.interfaces" :key="ifaceIdx" class="card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
         <h2 style="margin-bottom: 0;">{{ iface.name }}</h2>
-        <button class="btn btn-danger" @click="configStore.removeInterface(ifaceIdx)" style="font-size: 12px;">Remove</button>
+        <button class="btn btn-danger" @click="configStore.removeInterface(ifaceIdx)" style="font-size: 12px;">{{ $t('routes.remove') }}</button>
       </div>
       <div v-for="(route, routeIdx) in iface.routes" :key="routeIdx"
            style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-primary); border-radius: var(--radius); margin-bottom: 4px;">
         <span style="font-family: var(--font-mono); font-size: 13px; color: var(--text-link);">{{ route }}</span>
         <button @click="configStore.removeRoute(ifaceIdx, routeIdx)"
-                style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 16px; padding: 0 4px;" title="Remove route">×</button>
+                style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 16px; padding: 0 4px;" :title="$t('routes.removeRoute')">×</button>
       </div>
       <div style="display: flex; gap: 8px; margin-top: 8px;">
-        <input v-model="newRoutes[ifaceIdx]" placeholder="Domain, IP, or CIDR (e.g. github.com, 192.168.1.0/24)"
+        <input v-model="newRoutes[ifaceIdx]" :placeholder="$t('routes.routePlaceholder')"
                @keyup.enter="addRoute(ifaceIdx)" style="flex: 1; font-size: 13px;" />
-        <button class="btn" @click="addRoute(ifaceIdx)" style="font-size: 13px;">Add</button>
+        <button class="btn" @click="addRoute(ifaceIdx)" style="font-size: 13px;">{{ $t('routes.add') }}</button>
       </div>
     </div>
   </div>

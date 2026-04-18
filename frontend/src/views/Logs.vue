@@ -41,22 +41,22 @@ function levelColor(level) {
 <template>
   <div style="display: flex; flex-direction: column; height: 100%;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <h1 style="margin-bottom: 0;">Logs</h1>
+      <h1 style="margin-bottom: 0;">{{ $t('logs.title') }}</h1>
       <div style="display: flex; align-items: center; gap: 8px;">
-        <input v-model="logStore.searchQuery" placeholder="Search..." style="width: 200px; font-size: 13px;" />
+        <input v-model="logStore.searchQuery" :placeholder="$t('logs.search')" style="width: 200px; font-size: 13px;" />
         <select v-model="logStore.levelFilter" style="font-size: 13px;">
-          <option value="all">All levels</option>
-          <option value="error">Error</option>
-          <option value="warn">Warning</option>
-          <option value="info">Info</option>
-          <option value="debug">Debug</option>
+          <option value="all">{{ $t('logs.allLevels') }}</option>
+          <option value="error">{{ $t('logs.error') }}</option>
+          <option value="warn">{{ $t('logs.warning') }}</option>
+          <option value="info">{{ $t('logs.info') }}</option>
+          <option value="debug">{{ $t('logs.debug') }}</option>
         </select>
-        <button class="btn" @click="logStore.clear()" style="font-size: 12px;">Clear</button>
+        <button class="btn" @click="logStore.clear()" style="font-size: 12px;">{{ $t('logs.clear') }}</button>
       </div>
     </div>
     <div ref="logContainer" @scroll="onScroll"
          style="flex: 1; overflow-y: auto; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 8px; font-family: var(--font-mono); font-size: 12px; line-height: 1.7;">
-      <div v-if="logStore.filtered.length === 0" style="color: var(--text-secondary); text-align: center; padding: 40px;">No log entries</div>
+      <div v-if="logStore.filtered.length === 0" style="color: var(--text-secondary); text-align: center; padding: 40px;">{{ $t('logs.noEntries') }}</div>
       <div v-for="(entry, idx) in logStore.filtered" :key="idx" style="display: flex; gap: 8px; white-space: nowrap;">
         <span style="color: var(--text-secondary); flex-shrink: 0;">{{ formatTime(entry.time) }}</span>
         <span :style="{ color: levelColor(entry.level), flexShrink: 0, width: '44px', textAlign: 'right' }">[{{ entry.level }}]</span>
@@ -64,9 +64,9 @@ function levelColor(level) {
       </div>
     </div>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
-      <span>{{ logStore.filtered.length }} entries{{ logStore.levelFilter !== 'all' ? ' (filtered)' : '' }}</span>
+      <span>{{ logStore.filtered.length }} {{ $t('logs.entries') }}{{ logStore.levelFilter !== 'all' ? ' ' + $t('logs.filtered') : '' }}</span>
       <span :style="{ color: autoScroll ? 'var(--success)' : 'var(--text-secondary)' }">
-        {{ autoScroll ? 'Auto-scroll ON' : 'Auto-scroll paused — scroll to bottom to resume' }}
+        {{ autoScroll ? $t('logs.autoScrollOn') : $t('logs.autoScrollPaused') }}
       </span>
     </div>
   </div>

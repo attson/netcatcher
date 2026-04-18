@@ -20,14 +20,14 @@ onMounted(async () => {
   <div class="layout">
     <nav class="sidebar">
       <ul class="sidebar-nav">
-        <li><router-link to="/">Dashboard</router-link></li>
-        <li><router-link to="/routes">Routes</router-link></li>
-        <li><router-link to="/logs">Logs</router-link></li>
-        <li><router-link to="/settings">Settings</router-link></li>
+        <li><router-link to="/">{{ $t('nav.dashboard') }}</router-link></li>
+        <li><router-link to="/routes">{{ $t('nav.routes') }}</router-link></li>
+        <li><router-link to="/logs">{{ $t('nav.logs') }}</router-link></li>
+        <li><router-link to="/settings">{{ $t('nav.settings') }}</router-link></li>
       </ul>
       <div style="margin-top: auto; padding: 12px 16px; border-top: 1px solid var(--border-color);">
         <span class="badge" :class="monitor.status.running ? 'badge-success' : 'badge-error'" style="font-size: 11px;">
-          {{ monitor.status.running ? 'Monitoring' : 'Stopped' }}
+          {{ monitor.status.running ? $t('status.monitoring') : $t('status.stopped') }}
         </span>
       </div>
     </nav>
