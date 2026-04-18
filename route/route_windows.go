@@ -53,6 +53,30 @@ func DeleteRoute(ip, gateway string, mask net.IPMask) error {
 	return command.Run()
 }
 
+type RouteSpec struct {
+	Ip      string
+	Gateway string
+	Mask    net.IPMask
+}
+
+func AddRoutes(routes []RouteSpec) error {
+	for _, r := range routes {
+		if err := AddRoute(r.Ip, r.Gateway, r.Mask); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DeleteRoutes(routes []RouteSpec) error {
+	for _, r := range routes {
+		if err := DeleteRoute(r.Ip, r.Gateway, r.Mask); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type GBKW struct {
 	w io.Writer
 }

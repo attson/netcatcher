@@ -127,67 +127,43 @@ func (n *NetCatcher) addRoutesTo(addr net.Addr) {
 		return
 	}
 	n.resolveRoutes(ip.String())
-	for _, r := range n.routes {
-		err := route.AddRoute(r.ip, r.gateway, r.mask)
-		if err != nil {
-			log.Printf("%s: [warn] add route fail %s %v", n.config.Name, r, err)
-		} else {
-			log.Printf("%s: [debug] add route %s", n.config.Name, r)
-		}
+	specs := make([]route.RouteSpec, len(n.routes))
+	for i, r := range n.routes {
+		specs[i] = route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask}
+		log.Printf("%s: [debug] add route %s", n.config.Name, r)
+	}
+	if err := route.AddRoutes(specs); err != nil {
+		log.Printf("%s: [warn] add routes failed: %v", n.config.Name, err)
 	}
 }
 
 func (n *NetCatcher) clearRoutes() {
-	for _, r := range n.routes {
-		err := route.DeleteRoute(r.ip, r.gateway, r.mask)
-		if err != nil {
-			log.Printf("%s: [warn] delete route fail %s %v", n.config.Name, r, err)
-		} else {
-			log.Printf("%s: [debug] delete route %s", n.config.Name, r)
-		}
+	if len(n.routes) == 0 {
+		return
+	}
+	specs := make([]route.RouteSpec, len(n.routes))
+	for i, r := range n.routes {
+		specs[i] = route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask}
+		log.Printf("%s: [debug] delete route %s", n.config.Name, r)
+	}
+	if err := route.DeleteRoutes(specs); err != nil {
+		log.Printf("%s: [warn] delete routes failed: %v", n.config.Name, err)
 	}
 }
 
 func (n *NetCatcher) Watch(ctx context.Context) {
-	poll := make(chan changeEvent)
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
-			i, err := net.InterfaceByName(n.config.Name)
-			if err != nil {
-				if opErr, ok := err.(*net.OpError); ok {
-					if opErr.Unwrap().Error() == "no such network interface" {
-						poll <- changeEvent{status: disconnected}
-						time.Sleep(time.Second)
-						continue
-					}
-				}
-				log.Printf("%s: [warn] get interface fail %v\n", n.config.Name, err)
-			} else {
-				addrs, err := i.Addrs()
-				if err != nil || len(addrs) == 0 {
-					log.Printf("%s: [warn] get interface addr fail %v\n", n.config.Name, err)
-				} else {
-					poll <- changeEvent{status: connected, addr: addrs[0]}
-				}
-			}
-			time.Sleep(time.Second)
-		}
-	}()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			n.clearRoutes()
 			return
-		case event := <-poll:
-			if n.current == event.status {
-				break
+		case <-ticker.C:
+			event := n.poll()
+			if event == nil || n.current == event.status {
+				continue
 			}
 			log.Printf("%s: [info] interface status changed to %v\n", n.config.Name, event.status == connected)
 			n.current = event.status
@@ -197,6 +173,25 @@ func (n *NetCatcher) Watch(ctx context.Context) {
 			n.emitStatus()
 		}
 	}
+}
+
+func (n *NetCatcher) poll() *changeEvent {
+	i, err := net.InterfaceByName(n.config.Name)
+	if err != nil {
+		if opErr, ok := err.(*net.OpError); ok {
+			if opErr.Unwrap().Error() == "no such network interface" {
+				return &changeEvent{status: disconnected}
+			}
+		}
+		log.Printf("%s: [warn] get interface fail %v\n", n.config.Name, err)
+		return nil
+	}
+	addrs, err := i.Addrs()
+	if err != nil || len(addrs) == 0 {
+		log.Printf("%s: [warn] get interface addr fail %v\n", n.config.Name, err)
+		return nil
+	}
+	return &changeEvent{status: connected, addr: addrs[0]}
 }
 
 func (n *NetCatcher) Stop() {

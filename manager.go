@@ -19,6 +19,7 @@ type StatusChangeCallback = nc.StatusCallback
 
 type Manager struct {
 	mu        sync.Mutex
+	wg        sync.WaitGroup
 	cfg       config.Config
 	catchers  []*nc.NetCatcher
 	cancel    context.CancelFunc
@@ -46,7 +47,11 @@ func (m *Manager) Start() {
 	for _, iface := range m.cfg.Interfaces {
 		catcher := nc.NewNetCatcher(iface, m.onStatus)
 		m.catchers = append(m.catchers, catcher)
-		go catcher.Watch(ctx)
+		m.wg.Add(1)
+		go func() {
+			defer m.wg.Done()
+			catcher.Watch(ctx)
+		}()
 	}
 
 	now := time.Now()
@@ -63,6 +68,9 @@ func (m *Manager) Stop() {
 	}
 
 	m.cancel()
+	m.mu.Unlock()
+	m.wg.Wait()
+	m.mu.Lock()
 	m.running = false
 	m.startedAt = nil
 }

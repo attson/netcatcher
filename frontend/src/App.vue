@@ -21,7 +21,6 @@ onMounted(async () => {
     <nav class="sidebar">
       <ul class="sidebar-nav">
         <li><router-link to="/">{{ $t('nav.dashboard') }}</router-link></li>
-        <li><router-link to="/routes">{{ $t('nav.routes') }}</router-link></li>
         <li><router-link to="/logs">{{ $t('nav.logs') }}</router-link></li>
         <li><router-link to="/settings">{{ $t('nav.settings') }}</router-link></li>
       </ul>
