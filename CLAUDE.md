@@ -8,7 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Go 1.25+
 - Node.js 20+
-- Wails v3 CLI (`go install github.com/wailsapp/wails/v3/cmd/wails3@latest`)
 
 ### Build
 
@@ -18,9 +17,6 @@ cd frontend && npm ci && npx vite build
 
 # Build Go binary
 go build -o build/bin/netcatcher-app .
-
-# Or use the Wails CLI (handles both steps)
-wails3 build
 ```
 
 ### Run
@@ -29,6 +25,14 @@ wails3 build
 # Requires admin/root privileges for route management
 sudo ./build/bin/netcatcher-app
 ```
+
+### CI / Release
+
+GitHub Actions workflow at `.github/workflows/release.yaml` triggers on tag push (`v*`). Builds:
+- macOS arm64 + amd64: packaged as `.dmg` containing a `.app` bundle
+- Windows amd64: `.exe`
+
+The CI does NOT use `wails3 build` (which requires a Taskfile). It runs `npx vite build` + `go build` directly.
 
 ### Tests
 

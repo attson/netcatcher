@@ -15,17 +15,26 @@ A desktop application that monitors network interfaces and automatically adds st
 - Settings panel for app preferences (auto-start, notifications, language)
 - System tray integration — the app hides to the tray when the window is closed; use the tray menu to quit
 
-## Prerequisites
+## Installation
+
+Download the latest release from the [Releases](https://github.com/attson/netcatcher/releases) page:
+
+| Platform | File |
+|----------|------|
+| macOS (Apple Silicon) | `NetCatcher-arm64.dmg` |
+| macOS (Intel) | `NetCatcher-amd64.dmg` |
+| Windows | `NetCatcher-amd64.exe` |
+
+**macOS:** Open the `.dmg` and drag NetCatcher to Applications. The app requires root privileges to manage routes — launch with `sudo` or grant entitlements.
+
+**Windows:** Run `NetCatcher-amd64.exe` as Administrator.
+
+## Building from Source
+
+### Prerequisites
 
 - Go 1.25+
 - Node.js 20+
-- Wails v3 CLI
-
-```bash
-go install github.com/wailsapp/wails/v3/cmd/wails3@latest
-```
-
-## Building from Source
 
 ```bash
 # Clone the repository
@@ -38,19 +47,9 @@ cd frontend && npm ci && npx vite build && cd ..
 # Build Go binary
 go build -o build/bin/netcatcher-app .
 
-# Or use the Wails CLI (handles both steps)
-wails3 build
-```
-
-## Running
-
-The app requires administrator/root privileges to modify the routing table.
-
-```bash
+# Run (requires admin/root privileges for route management)
 sudo ./build/bin/netcatcher-app
 ```
-
-On Windows, run the executable as Administrator.
 
 ## Usage
 
