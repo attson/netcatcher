@@ -69,7 +69,7 @@ func main() {
 	systray := wailsApp.SystemTray.New()
 	systray.SetIcon(appIcon)
 	systray.SetMenu(trayMenu)
-	systray.SetLabel("NetCatcher")
+
 
 	// Register shutdown hook so monitoring stops cleanly.
 	wailsApp.OnShutdown(func() {
