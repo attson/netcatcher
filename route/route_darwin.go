@@ -41,8 +41,6 @@ func ensureAuth() {
 	})
 }
 
-func Cleanup() {
-}
 
 func runRoute(args ...string) error {
 	ensureAuth()

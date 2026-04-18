@@ -77,9 +77,6 @@ func DeleteRoutes(routes []RouteSpec) error {
 	return nil
 }
 
-func Cleanup() {
-}
-
 type GBKW struct {
 	w io.Writer
 }
