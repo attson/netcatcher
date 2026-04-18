@@ -91,9 +91,14 @@ jobs:
           </plist>
           PLIST
 
+          DMG_DIR="build/dmg-contents"
+          mkdir -p "$DMG_DIR"
+          mv build/NetCatcher.app "$DMG_DIR/"
+          ln -s /Applications "$DMG_DIR/Applications"
+
           DMG_NAME="NetCatcher-${{ matrix.goarch }}.dmg"
-          hdiutil create -volname "NetCatcher" -srcfolder build/NetCatcher.app -ov -format UDZO "build/bin/$DMG_NAME"
-          rm -rf build/NetCatcher.app build/bin/netcatcher
+          hdiutil create -volname "NetCatcher" -srcfolder "$DMG_DIR" -ov -format UDZO "build/bin/$DMG_NAME"
+          rm -rf "$DMG_DIR" build/bin/netcatcher
 
       - name: Rename Windows binary
         if: matrix.platform == 'windows'
