@@ -26,12 +26,7 @@ const uptime = computed(() => {
 
 function toggle(name) { expanded.value[name] = !expanded.value[name] }
 
-const copiedKey = ref(null)
-function copyText(text) {
-  navigator.clipboard.writeText(text)
-  copiedKey.value = text
-  setTimeout(() => { copiedKey.value = null }, 1500)
-}
+
 
 async function pingRoute(host) {
   pingResults.value[host] = { loading: true }
@@ -80,8 +75,8 @@ async function pingRoute(host) {
       <p style="color: var(--text-secondary); text-align: center; padding: 20px;">{{ $t('dashboard.noInterfaces') }}</p>
     </div>
 
-    <div v-for="iface in monitor.status.interfaces" :key="iface.interfaceName" class="card" style="cursor: pointer;" @click="toggle(iface.interfaceName)">
-      <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div v-for="iface in monitor.status.interfaces" :key="iface.interfaceName" class="card">
+      <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;" @click="toggle(iface.interfaceName)">
         <div style="display: flex; align-items: center; gap: 10px;">
           <span style="font-size: 10px;" :style="{ color: iface.connected ? 'var(--success)' : 'var(--error)' }">●</span>
           <span style="font-weight: 600;">{{ iface.interfaceName }}</span>
@@ -96,15 +91,12 @@ async function pingRoute(host) {
       </div>
       <div v-if="expanded[iface.interfaceName]" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
         <div v-if="iface.gateway" style="color: var(--text-secondary); font-size: 13px; margin-bottom: 8px;">
-          {{ $t('dashboard.gateway') }} <span style="color: var(--text-primary);">{{ iface.gateway }}</span>
+          {{ $t('dashboard.gateway') }} <span style="color: var(--text-primary); user-select: text;">{{ iface.gateway }}</span>
         </div>
         <div v-for="route in iface.routes" :key="route.ip" style="display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px;">
           <span style="font-size: 8px;" :style="{ color: route.active ? 'var(--success)' : 'var(--text-secondary)' }">●</span>
-          <span style="color: var(--text-link); font-family: var(--font-mono); cursor: pointer;" @click.stop="copyText(route.for)" :title="copiedKey === route.for ? '✓' : route.for">{{ route.for }}</span>
-          <span v-if="route.for !== route.ip" style="color: var(--text-secondary);">→
-            <span style="cursor: pointer;" @click.stop="copyText(route.ip)" :title="copiedKey === route.ip ? '✓' : route.ip">{{ route.ip }}</span>
-          </span>
-          <span v-if="copiedKey === route.for || copiedKey === route.ip" style="color: var(--success); font-size: 11px;">✓</span>
+          <span style="color: var(--text-link); font-family: var(--font-mono); user-select: text;">{{ route.for }}</span>
+          <span v-if="route.for !== route.ip" style="color: var(--text-secondary); user-select: text;">→ {{ route.ip }}</span>
           <button class="btn" style="font-size: 11px; padding: 2px 8px; margin-left: auto;" @click.stop="pingRoute(route.for)">
             {{ pingResults[route.for]?.loading ? '...' : $t('dashboard.ping') }}
           </button>
