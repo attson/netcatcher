@@ -59,7 +59,7 @@ jobs:
         run: |
           mkdir -p build/bin
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            go build -o "build/bin/netcatcher.exe" .
+            go build -ldflags="-H=windowsgui" -o "build/bin/netcatcher.exe" .
           else
             go build -o "build/bin/netcatcher" .
           fi

@@ -105,5 +105,5 @@ Config is stored at a platform-specific path:
 ## Platform Notes
 
 - macOS: the app prompts for admin password once on first route operation. A sudoers rule (`/etc/sudoers.d/netcatcher`) is created to allow passwordless `/sbin/route` calls afterwards.
-- Windows: disable "Use default gateway on remote network" in the VPN adapter settings so routes don't conflict.
+- Windows: disable "Use default gateway on remote network" in the VPN adapter settings so routes don't conflict. Build with `go build -ldflags="-H=windowsgui" ...` so the `.exe` runs without popping a console window (CI already does this).
 - Both platforms require administrator/root privileges to modify the routing table.
