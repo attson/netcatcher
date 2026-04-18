@@ -1,85 +1,35 @@
 package main
 
 import (
-	"encoding/json"
-	"flag"
+	"embed"
 	"log"
-	"net"
-	"netcatcher/config"
-	"netcatcher/netcatcher"
-	"os"
-	"os/signal"
-	"syscall"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-func waitStop() {
-	// hook exit signal
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
-	s := <-sigs
-
-	for _, n := range netcatchers {
-		n.Stop()
-	}
-	log.Printf("stop netcatcher by signal [%v]", s)
-
-	os.Exit(0)
-}
-
-var netcatchers []*netcatcher.NetCatcher
+//go:embed frontend/dist
+var assets embed.FS
 
 func main() {
-	configPath := flag.String("c", "config.json", "config file path")
-	logPath := flag.String("l", "", "log file path")
-	flag.Parse()
+	app := application.New(application.Options{
+		Name:        "NetCatcher",
+		Description: "Network route manager",
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+		},
+	})
 
-	if *logPath != "" {
-		open, err := os.OpenFile(*logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-		if err != nil {
-			panic(err)
-		}
-		log.SetOutput(open)
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:     "NetCatcher",
+		Width:     900,
+		Height:    600,
+		MinWidth:  700,
+		MinHeight: 450,
+		Frameless: true,
+		URL:       "/",
+	})
+
+	if err := app.Run(); err != nil {
+		log.Fatal(err)
 	}
-
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		panic(err)
-	}
-
-	for _, i := range interfaces {
-		addrs, err := i.Addrs()
-		if err != nil {
-			panic(err)
-		}
-		log.Printf("%s: ", i.Name)
-		for _, a := range addrs {
-			log.Printf("\t%s", a.String())
-		}
-	}
-
-	log.Printf("config file: %s\n", *configPath)
-
-	file, err := os.ReadFile(*configPath)
-	if err != nil {
-		panic(err)
-	}
-
-	c := config.Config{}
-
-	err = json.Unmarshal(file, &c)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, s := range c.Interfaces {
-		n := netcatcher.NewNetCatcher(s)
-
-		netcatchers = append(netcatchers, n)
-
-		go n.Watch()
-	}
-
-	log.Printf("netcatcher started...\n")
-
-	waitStop()
 }

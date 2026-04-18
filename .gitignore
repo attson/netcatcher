@@ -1,4 +1,7 @@
 .idea
 config.json
 netcatcher*.gz*
+netcatcher-app
 .DS_Store
+frontend/node_modules
+frontend/dist
