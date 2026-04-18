@@ -74,8 +74,14 @@ async function save() {
   } catch (e) { saveMessage.value = t('routes.saveFailed') + e }
 }
 
-function findConfigIndex(interfaceName) {
-  return configStore.config.interfaces.findIndex(i => i.name === interfaceName)
+function getMonitorIface(name) {
+  return monitor.status.interfaces.find(i => i.interfaceName === name)
+}
+
+function getResolvedIps(ifaceName, routeName) {
+  const iface = getMonitorIface(ifaceName)
+  if (!iface?.routes) return []
+  return iface.routes.filter(r => r.for === routeName && r.for !== r.ip).map(r => r.ip)
 }
 </script>
 
@@ -127,9 +133,9 @@ function findConfigIndex(interfaceName) {
     <div v-for="(iface, ifaceIdx) in configStore.config.interfaces" :key="ifaceIdx" class="card">
       <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;" @click="toggle(iface.name)">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <span style="font-size: 10px;" :style="{ color: monitor.status.interfaces.find(i => i.interfaceName === iface.name)?.connected ? 'var(--success)' : 'var(--text-secondary)' }">●</span>
+          <span style="font-size: 10px;" :style="{ color: getMonitorIface(iface.name)?.connected ? 'var(--success)' : 'var(--text-secondary)' }">●</span>
           <span style="font-weight: 600;">{{ iface.name }}</span>
-          <span v-if="monitor.status.interfaces.find(i => i.interfaceName === iface.name)?.connected" class="badge badge-success">
+          <span v-if="getMonitorIface(iface.name)?.connected" class="badge badge-success">
             {{ $t('dashboard.connected') }}
           </span>
         </div>
@@ -141,16 +147,17 @@ function findConfigIndex(interfaceName) {
       </div>
 
       <div v-if="expanded[iface.name]" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-        <div v-if="monitor.status.interfaces.find(i => i.interfaceName === iface.name)?.gateway"
+        <div v-if="getMonitorIface(iface.name)?.gateway"
              style="color: var(--text-secondary); font-size: 13px; margin-bottom: 8px;">
           {{ $t('dashboard.gateway') }}
-          <span style="color: var(--text-primary); user-select: text;">{{ monitor.status.interfaces.find(i => i.interfaceName === iface.name).gateway }}</span>
+          <span style="color: var(--text-primary); user-select: text;">{{ getMonitorIface(iface.name).gateway }}</span>
         </div>
 
         <div v-for="(route, routeIdx) in iface.routes" :key="routeIdx"
              style="display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px;">
           <span style="font-size: 8px; color: var(--text-secondary);">●</span>
           <span style="color: var(--text-link); font-family: var(--font-mono); user-select: text;">{{ route }}</span>
+          <span v-if="getResolvedIps(iface.name, route).length" style="color: var(--text-secondary); user-select: text;">→ {{ getResolvedIps(iface.name, route).join(', ') }}</span>
           <button @click="configStore.removeRoute(ifaceIdx, routeIdx)"
                   style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 16px; padding: 0 4px;" :title="$t('routes.removeRoute')">×</button>
           <button class="btn" style="font-size: 11px; padding: 2px 8px; margin-left: auto;" @click.stop="pingRoute(route)">
