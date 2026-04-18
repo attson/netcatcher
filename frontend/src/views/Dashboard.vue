@@ -13,13 +13,21 @@ const pingResults = ref({})
 const newIfaceName = ref('')
 const newRoutes = ref({})
 const saveMessage = ref('')
+const systemInterfaces = ref([])
 const savedSnapshot = ref('')
 const dirty = computed(() => JSON.stringify(configStore.config) !== savedSnapshot.value)
+const availableInterfaces = computed(() => {
+  const configured = new Set(configStore.config.interfaces.map(i => i.name))
+  return systemInterfaces.value.filter(name => !configured.has(name))
+})
 
 onMounted(async () => {
   await monitor.fetchStatus()
   await configStore.fetchConfig()
   savedSnapshot.value = JSON.stringify(configStore.config)
+  try {
+    systemInterfaces.value = await Call.ByName('main.App.GetNetworkInterfaces') || []
+  } catch (e) { console.error('GetNetworkInterfaces failed:', e) }
   Events.On('interface:status-changed', (event) => {
     monitor.updateInterfaceStatus(event.data)
   })
@@ -125,8 +133,11 @@ function getResolvedIps(ifaceName, routeName) {
       </div>
     </div>
 
-    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-      <input v-model="newIfaceName" :placeholder="$t('routes.ifacePlaceholder')" @keyup.enter="addInterface" style="flex: 1;" />
+    <div v-if="availableInterfaces.length > 0" style="display: flex; gap: 8px; margin-bottom: 12px;">
+      <select v-model="newIfaceName" style="flex: 1;">
+        <option value="" disabled>{{ $t('routes.ifacePlaceholder') }}</option>
+        <option v-for="name in availableInterfaces" :key="name" :value="name">{{ name }}</option>
+      </select>
       <button class="btn" @click="addInterface">{{ $t('routes.addInterface') }}</button>
     </div>
 
