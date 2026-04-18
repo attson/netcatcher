@@ -5,3 +5,14 @@ netcatcher-app
 .DS_Store
 frontend/node_modules
 frontend/dist
+
+# Wails
+frontend/dist/
+frontend/node_modules/
+wailsjs/
+
+# Build artifacts
+build/bin/
+
+# Superpowers
+.superpowers/
