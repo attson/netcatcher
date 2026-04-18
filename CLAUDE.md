@@ -35,6 +35,16 @@ GitHub Actions workflow at `.github/workflows/release.yaml` triggers on tag push
 
 The CI does NOT use `wails3 build` (which requires a Taskfile). It runs `npx vite build` + `go build` directly.
 
+### Versioning
+
+The version shown in Settings > About and in the macOS `Info.plist` is injected at build time:
+
+- CI (tag push): derived from the git tag, e.g. `v1.2.3` → `1.2.3`.
+- Local build: `vite.config.js` runs `git rev-parse --short HEAD` and uses `dev-<sha>`; falls back to `dev` if not in a git repo.
+- Override: set `APP_VERSION` env var before `npx vite build` (and before the macOS packaging step) to force a specific version.
+
+Vite exposes the resolved value as the global `__APP_VERSION__`, read by `frontend/src/views/Settings.vue`. The i18n strings use a `{version}` placeholder.
+
 ### Tests
 
 ```bash

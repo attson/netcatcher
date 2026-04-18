@@ -10,6 +10,7 @@ const autoStart = ref(false)
 const notifications = ref(true)
 const currentLocale = ref(locale.value)
 const loading = ref(true)
+const appVersion = __APP_VERSION__
 
 onMounted(async () => {
   await configStore.fetchConfigPath()
@@ -93,7 +94,7 @@ function changeLocale() {
       <h2>{{ $t('settings.about') }}</h2>
       <div style="padding: 8px 0; color: var(--text-secondary); font-size: 13px;">
         <div style="margin-bottom: 4px;"><span style="color: var(--text-primary);">{{ $t('settings.appName') }}</span> {{ $t('settings.appDesc') }}</div>
-        <div style="margin-bottom: 4px;">{{ $t('settings.version') }}</div>
+        <div style="margin-bottom: 4px;">{{ $t('settings.version', { version: appVersion }) }}</div>
         <div><a href="https://github.com/attson/netcatcher" target="_blank" style="color: var(--text-link); text-decoration: none;">{{ $t('settings.github') }}</a></div>
       </div>
     </div>

@@ -65,6 +65,6 @@
   "settings.about": "关于",
   "settings.appName": "NetCatcher",
   "settings.appDesc": "— 网络路由管理器",
-  "settings.version": "版本：1.0.0",
+  "settings.version": "版本：{version}",
   "settings.github": "GitHub 仓库"
 }

@@ -27,6 +27,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Compute version
+        id: ver
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -45,6 +50,8 @@ jobs:
         run: cd frontend && npm ci
 
       - name: Build frontend
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.version }}
         run: cd frontend && npx vite build
 
       - name: Build Go binary
@@ -59,6 +66,8 @@ jobs:
 
       - name: Package macOS .dmg
         if: matrix.platform == 'darwin'
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.version }}
         run: |
           APP="build/NetCatcher.app"
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -81,7 +90,7 @@ jobs:
           iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/appicon.icns"
           rm -rf "$ICONSET"
 
-          cat > "$APP/Contents/Info.plist" << 'PLIST'
+          cat > "$APP/Contents/Info.plist" << PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -95,9 +104,9 @@ jobs:
             <key>CFBundleName</key>
             <string>NetCatcher</string>
             <key>CFBundleVersion</key>
-            <string>1.0.0</string>
+            <string>${APP_VERSION}</string>
             <key>CFBundleShortVersionString</key>
-            <string>1.0.0</string>
+            <string>${APP_VERSION}</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>LSUIElement</key>
