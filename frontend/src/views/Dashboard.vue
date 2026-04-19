@@ -9,13 +9,14 @@ const { t } = useI18n()
 const monitor = useMonitorStore()
 const configStore = useConfigStore()
 const expanded = ref({})
+const editing = ref({})
 const pingResults = ref({})
 const newIfaceName = ref('')
 const newRoutes = ref({})
+const newDns = ref({})
 const saveMessage = ref('')
 const systemInterfaces = ref([])
 const savedSnapshot = ref('')
-const dirty = computed(() => JSON.stringify(configStore.config) !== savedSnapshot.value)
 const availableInterfaces = computed(() => {
   const configured = new Set(configStore.config.interfaces.map(i => i.name))
   return systemInterfaces.value
@@ -71,6 +72,38 @@ function addInterface() {
   if (!name) return
   configStore.addInterface(name)
   newIfaceName.value = ''
+  editing.value[name] = true
+  expanded.value[name] = true
+}
+
+function startEdit(name) {
+  editing.value[name] = true
+  expanded.value[name] = true
+}
+
+async function applyEdit(name) {
+  await save()
+  if (saveMessage.value === t('routes.saved')) {
+    editing.value[name] = false
+  }
+}
+
+function cancelEdit(ifaceIdx) {
+  const iface = configStore.config.interfaces[ifaceIdx]
+  if (!iface) return
+  const name = iface.name
+  try {
+    const snapshot = JSON.parse(savedSnapshot.value)
+    const original = snapshot.interfaces.find(i => i.name === name)
+    if (original) {
+      configStore.config.interfaces[ifaceIdx] = JSON.parse(JSON.stringify(original))
+    } else {
+      configStore.config.interfaces.splice(ifaceIdx, 1)
+    }
+  } catch (e) { console.error('cancelEdit failed:', e) }
+  newRoutes.value[ifaceIdx] = ''
+  newDns.value[ifaceIdx] = ''
+  editing.value[name] = false
 }
 
 function addRoute(ifaceIndex) {
@@ -86,6 +119,20 @@ function validateRoute(route) {
   const cidr = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$/
   const domain = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/
   return ipv4.test(route) || cidr.test(route) || domain.test(route)
+}
+
+function validateDns(dns) {
+  const ipv4 = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/
+  const ipv4Port = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}$/
+  return ipv4.test(dns) || ipv4Port.test(dns)
+}
+
+function addDns(ifaceIndex) {
+  const dns = (newDns.value[ifaceIndex] || '').trim()
+  if (!dns) return
+  if (!validateDns(dns)) return
+  configStore.addDns(ifaceIndex, dns)
+  newDns.value[ifaceIndex] = ''
 }
 
 async function save() {
@@ -105,6 +152,15 @@ function getResolvedIps(ifaceName, routeName) {
   const iface = getMonitorIface(ifaceName)
   if (!iface?.routes) return []
   return iface.routes.filter(r => r.for === routeName && r.for !== r.ip).map(r => r.ip)
+}
+
+function isRouteActive(ifaceName, routeName) {
+  if (!monitor.status.running) return false
+  const iface = getMonitorIface(ifaceName)
+  if (!iface?.connected) return false
+  const entries = (iface.routes || []).filter(r => r.for === routeName)
+  if (entries.length === 0) return false
+  return entries.some(r => r.active)
 }
 </script>
 
@@ -136,9 +192,6 @@ function getResolvedIps(ifaceName, routeName) {
       <h2 style="margin-bottom: 0;">{{ $t('dashboard.interfaces') }}</h2>
       <div style="display: flex; align-items: center; gap: 8px;">
         <span v-if="saveMessage" style="color: var(--success); font-size: 13px;">{{ saveMessage }}</span>
-        <button v-if="dirty" class="btn btn-primary" @click="save" :disabled="configStore.saving" style="font-size: 12px;">
-          {{ configStore.saving ? $t('routes.saving') : $t('routes.saveApply') }}
-        </button>
         <button class="btn btn-primary" v-if="!monitor.status.running" @click="monitor.startMonitor()">{{ $t('dashboard.start') }}</button>
         <button class="btn btn-danger" v-if="monitor.status.running" @click="monitor.stopMonitor()">{{ $t('dashboard.stop') }}</button>
       </div>
@@ -165,26 +218,54 @@ function getResolvedIps(ifaceName, routeName) {
             {{ $t('dashboard.connected') }}
           </span>
         </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
           <span style="color: var(--text-secondary); font-size: 13px;">{{ iface.routes.length }} {{ $t('dashboard.routeCount') }}</span>
-          <button class="btn btn-danger" @click.stop="configStore.removeInterface(ifaceIdx)" style="font-size: 11px; padding: 2px 8px;">{{ $t('routes.remove') }}</button>
+          <template v-if="editing[iface.name]">
+            <button class="btn btn-primary" @click.stop="applyEdit(iface.name)" :disabled="configStore.saving" style="font-size: 11px; padding: 2px 8px;">
+              {{ configStore.saving ? $t('routes.saving') : $t('routes.saveApply') }}
+            </button>
+            <button class="btn" @click.stop="cancelEdit(ifaceIdx)" style="font-size: 11px; padding: 2px 8px;">{{ $t('routes.cancel') }}</button>
+          </template>
+          <template v-else>
+            <button class="btn" @click.stop="startEdit(iface.name)" style="font-size: 11px; padding: 2px 8px;">{{ $t('routes.edit') }}</button>
+            <button class="btn btn-danger" @click.stop="configStore.removeInterface(ifaceIdx)" style="font-size: 11px; padding: 2px 8px;">{{ $t('routes.remove') }}</button>
+          </template>
           <span style="color: var(--text-secondary);">{{ expanded[iface.name] ? '▼' : '▶' }}</span>
         </div>
       </div>
 
       <div v-if="expanded[iface.name]" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-        <div v-if="getMonitorIface(iface.name)?.gateway"
-             style="color: var(--text-secondary); font-size: 13px; margin-bottom: 8px;">
-          {{ $t('dashboard.gateway') }}
-          <span style="color: var(--text-primary); user-select: text;">{{ getMonitorIface(iface.name).gateway }}</span>
+        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px; color: var(--text-secondary); font-size: 13px; margin-bottom: 8px;">
+          <div v-if="getMonitorIface(iface.name)?.gateway">
+            {{ $t('dashboard.gateway') }}
+            <span style="color: var(--text-primary); user-select: text;">{{ getMonitorIface(iface.name).gateway }}</span>
+          </div>
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px;" :title="$t('routes.dnsHint')">
+            <span>{{ $t('routes.dnsLabel') }}</span>
+            <span v-for="(dns, dnsIdx) in (iface.dns || [])" :key="dnsIdx"
+                  style="display: inline-flex; align-items: center; gap: 2px; padding: 1px 4px 1px 6px; border: 1px solid var(--border-color); border-radius: 3px; background: var(--bg-elevated); font-family: var(--font-mono); font-size: 12px; color: var(--text-primary);">
+              {{ dns }}
+              <button v-if="editing[iface.name]" @click="configStore.removeDns(ifaceIdx, dnsIdx)"
+                      style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1;" :title="$t('routes.removeDns')">×</button>
+            </span>
+            <span v-if="!editing[iface.name] && !(iface.dns || []).length" style="color: var(--text-secondary); font-size: 12px;">—</span>
+            <template v-if="editing[iface.name]">
+              <input v-model="newDns[ifaceIdx]" :placeholder="$t('routes.dnsPlaceholder')"
+                     @keyup.enter="addDns(ifaceIdx)" style="width: 180px; font-size: 12px; padding: 2px 6px;" />
+              <button class="btn" @click="addDns(ifaceIdx)" style="font-size: 12px; padding: 2px 8px;">{{ $t('routes.add') }}</button>
+            </template>
+          </div>
         </div>
 
         <div v-for="(route, routeIdx) in iface.routes" :key="routeIdx"
-             style="display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px;">
-          <span style="font-size: 8px; color: var(--text-secondary);">●</span>
-          <span style="color: var(--text-link); font-family: var(--font-mono); user-select: text;">{{ route }}</span>
+             style="display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px;"
+             :style="{ opacity: isRouteActive(iface.name, route) ? 1 : 0.55 }">
+          <span style="font-size: 8px;"
+                :style="{ color: isRouteActive(iface.name, route) ? 'var(--success)' : 'var(--text-secondary)' }">●</span>
+          <span style="font-family: var(--font-mono); user-select: text;"
+                :style="{ color: isRouteActive(iface.name, route) ? 'var(--text-link)' : 'var(--text-secondary)', textDecoration: isRouteActive(iface.name, route) ? 'none' : 'line-through' }">{{ route }}</span>
           <span v-if="getResolvedIps(iface.name, route).length" style="color: var(--text-secondary); user-select: text;">→ {{ getResolvedIps(iface.name, route).join(', ') }}</span>
-          <button @click="configStore.removeRoute(ifaceIdx, routeIdx)"
+          <button v-if="editing[iface.name]" @click="configStore.removeRoute(ifaceIdx, routeIdx)"
                   style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 16px; padding: 0 4px;" :title="$t('routes.removeRoute')">×</button>
           <button class="btn" style="font-size: 11px; padding: 2px 8px; margin-left: auto;" @click.stop="pingRoute(route)">
             {{ pingResults[route]?.loading ? '...' : $t('dashboard.ping') }}
@@ -195,7 +276,7 @@ function getResolvedIps(ifaceName, routeName) {
           </span>
         </div>
 
-        <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <div v-if="editing[iface.name]" style="display: flex; gap: 8px; margin-top: 8px;">
           <input v-model="newRoutes[ifaceIdx]" :placeholder="$t('routes.routePlaceholder')"
                  @keyup.enter="addRoute(ifaceIdx)" style="flex: 1; font-size: 13px;" />
           <button class="btn" @click="addRoute(ifaceIdx)" style="font-size: 13px;">{{ $t('routes.add') }}</button>

@@ -29,10 +29,19 @@ export const useConfigStore = defineStore('config', () => {
     finally { saving.value = false }
   }
 
-  function addInterface(name) { config.value.interfaces.push({ name, routes: [] }) }
+  function addInterface(name) { config.value.interfaces.push({ name, routes: [], dns: [] }) }
   function removeInterface(index) { config.value.interfaces.splice(index, 1) }
   function addRoute(ifaceIndex, route) { config.value.interfaces[ifaceIndex].routes.push(route) }
   function removeRoute(ifaceIndex, routeIndex) { config.value.interfaces[ifaceIndex].routes.splice(routeIndex, 1) }
+  function addDns(ifaceIndex, dns) {
+    const iface = config.value.interfaces[ifaceIndex]
+    if (!iface.dns) iface.dns = []
+    iface.dns.push(dns)
+  }
+  function removeDns(ifaceIndex, dnsIndex) {
+    const iface = config.value.interfaces[ifaceIndex]
+    if (iface.dns) iface.dns.splice(dnsIndex, 1)
+  }
 
-  return { config, configPath, saving, fetchConfig, fetchConfigPath, saveConfig, addInterface, removeInterface, addRoute, removeRoute }
+  return { config, configPath, saving, fetchConfig, fetchConfigPath, saveConfig, addInterface, removeInterface, addRoute, removeRoute, addDns, removeDns }
 })

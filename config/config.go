@@ -10,6 +10,7 @@ import (
 type Interface struct {
 	Name   string   `json:"name"`
 	Routes []string `json:"routes"`
+	DNS    []string `json:"dns,omitempty"`
 }
 
 type Config struct {
