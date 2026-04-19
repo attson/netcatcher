@@ -9,6 +9,7 @@ frontend/dist
 # Wails
 frontend/dist/
 frontend/node_modules/
+frontend/.vite/
 wailsjs/
 
 # Build artifacts

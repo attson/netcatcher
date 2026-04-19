@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -105,6 +106,22 @@ func (m *Manager) GetMonitorStatus() MonitorStatus {
 		Interfaces: statuses,
 		StartedAt:  m.startedAt,
 	}
+}
+
+func (m *Manager) RefreshRoute(ifaceName, forAddr string) error {
+	m.mu.Lock()
+	var target *nc.NetCatcher
+	for _, c := range m.catchers {
+		if c.Name() == ifaceName {
+			target = c
+			break
+		}
+	}
+	m.mu.Unlock()
+	if target == nil {
+		return fmt.Errorf("interface not found: %s", ifaceName)
+	}
+	return target.RefreshRoute(forAddr)
 }
 
 func (m *Manager) UpdateConfig(cfg config.Config) {
