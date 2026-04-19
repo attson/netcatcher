@@ -61,12 +61,19 @@ func (b *Buffer) Recent(n int) []Entry {
 }
 
 type writer struct {
-	buf   *Buffer
-	level string
+	buf          *Buffer
+	defaultLevel string
 }
 
-func (b *Buffer) Writer(level string) *writer {
-	return &writer{buf: b, level: level}
+// Writer returns an io.Writer compatible with log.SetOutput. Messages that
+// begin with "[<level>] " (one of debug/info/warn/error) are classified with
+// that level and the prefix is stripped; otherwise the default level is used.
+// Pass "" to fall back to "info".
+func (b *Buffer) Writer(defaultLevel string) *writer {
+	if defaultLevel == "" {
+		defaultLevel = "info"
+	}
+	return &writer{buf: b, defaultLevel: defaultLevel}
 }
 
 func (w *writer) Write(p []byte) (n int, err error) {
@@ -74,10 +81,36 @@ func (w *writer) Write(p []byte) (n int, err error) {
 	if msg == "" {
 		return len(p), nil
 	}
+	level, rest := parseLevel(msg, w.defaultLevel)
 	w.buf.Add(Entry{
 		Time:    time.Now(),
-		Level:   w.level,
-		Message: msg,
+		Level:   level,
+		Message: rest,
 	})
 	return len(p), nil
+}
+
+// parseLevel extracts a `[level]` tag from the message and returns the
+// classified level plus the remaining message. Unrecognized tags or missing
+// prefixes fall back to def and leave the message untouched.
+func parseLevel(s, def string) (level, rest string) {
+	if len(s) < 3 || s[0] != '[' {
+		return def, s
+	}
+	end := strings.IndexByte(s, ']')
+	if end < 0 {
+		return def, s
+	}
+	tag := s[1:end]
+	switch tag {
+	case "debug", "info", "warn", "error":
+	default:
+		return def, s
+	}
+	// Strip the "[level] " prefix (including the single space separator if present).
+	rest = s[end+1:]
+	if len(rest) > 0 && rest[0] == ' ' {
+		rest = rest[1:]
+	}
+	return tag, rest
 }

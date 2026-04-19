@@ -15,6 +15,10 @@ type Interface struct {
 
 type Config struct {
 	Interfaces []Interface `json:"interfaces"`
+	// TunMode enables a local DNS forwarder + /etc/resolver entries so that
+	// domain routes resolve correctly when the host uses a TUN-mode proxy
+	// (Clash / Mihomo / Surge). Leave off in plain setups.
+	TunMode bool `json:"tunMode,omitempty"`
 }
 
 func DefaultConfigPath() string {

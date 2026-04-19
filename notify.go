@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
+	"netcatcher/llog"
 	nc "netcatcher/netcatcher"
 
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
@@ -58,6 +58,6 @@ func (n *Notifier) OnStatusChange(status nc.InterfaceStatus) {
 		Title: title,
 		Body:  body,
 	}); err != nil {
-		log.Printf("[warn] send notification failed: %v", err)
+		llog.Warnf("notify", "send notification failed: %v", err)
 	}
 }

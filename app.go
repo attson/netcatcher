@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"netcatcher/config"
+	"netcatcher/llog"
 	"netcatcher/logbuffer"
 	nc "netcatcher/netcatcher"
 
@@ -47,11 +48,12 @@ func NewApp(configPath string, wailsApp *application.App, notifSvc *notification
 		}
 	})
 
+	log.SetFlags(0) // Entry.Time carries the timestamp; avoid a duplicate prefix.
 	log.SetOutput(a.logBuf.Writer("info"))
 
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		log.Printf("[error] load config: %v", err)
+		llog.Errorf("config", "load failed: %v", err)
 		cfg = config.Config{Interfaces: []config.Interface{}}
 	}
 
@@ -77,11 +79,11 @@ func (a *App) OnStartup(ctx context.Context) {
 		go func() {
 			granted, err := a.notifSvc.RequestNotificationAuthorization()
 			if err != nil {
-				log.Printf("[warn] notification authorization request failed: %v", err)
+				llog.Warnf("notify", "authorization request failed: %v", err)
 				return
 			}
 			if !granted {
-				log.Printf("[info] notification authorization denied by user")
+				llog.Infof("notify", "authorization denied by user")
 			}
 		}()
 	}
@@ -94,7 +96,7 @@ func (a *App) OnShutdown() {
 func (a *App) GetConfig() config.Config {
 	cfg, err := config.Load(a.configPath)
 	if err != nil {
-		log.Printf("[error] load config: %v", err)
+		llog.Errorf("config", "load failed: %v", err)
 		return config.Config{Interfaces: []config.Interface{}}
 	}
 	return cfg
@@ -135,7 +137,7 @@ func (a *App) GetStatus() MonitorStatus {
 func (a *App) PingRoute(ifaceName string, host string) PingResult {
 	if ifaceName != "" {
 		if err := a.manager.RefreshRoute(ifaceName, host); err != nil {
-			log.Printf("[warn] refresh route %s on %s: %v", host, ifaceName, err)
+			llog.Warnf("app", "refresh route %s on %s failed: %v", host, ifaceName, err)
 		}
 	}
 

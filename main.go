@@ -3,12 +3,12 @@ package main
 import (
 	"embed"
 	_ "embed"
-	"log"
 	"os"
 	"runtime"
 	"strings"
 
 	"netcatcher/config"
+	"netcatcher/llog"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -41,7 +41,7 @@ func main() {
 		notifSvc = notifications.New()
 		wailsApp.RegisterService(application.NewService(notifSvc))
 	} else {
-		log.Printf("[info] system notifications unavailable (run from .app bundle on macOS)")
+		llog.Infof("notify", "system notifications unavailable (run from .app bundle on macOS)")
 	}
 
 	app := NewApp(configPath, wailsApp, notifSvc)
@@ -92,7 +92,8 @@ func main() {
 	app.OnStartup(nil)
 
 	if err := wailsApp.Run(); err != nil {
-		log.Fatal(err)
+		llog.Errorf("app", "wails run failed: %v", err)
+		os.Exit(1)
 	}
 }
 
