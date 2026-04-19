@@ -3,9 +3,9 @@ package netcatcher
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"netcatcher/config"
+	"netcatcher/llog"
 	"netcatcher/route"
 	"time"
 )
@@ -94,7 +94,7 @@ func (n *NetCatcher) RefreshRoute(forAddr string) error {
 		if ifaceErr == nil && iface != nil {
 			ips, err := lookupIPViaInterface(iface, gateway, n.config.DNS, forAddr)
 			if err != nil || len(ips) == 0 {
-				log.Printf("%s: [warn] refresh %s via %s fail %v; falling back to system resolver", n.config.Name, forAddr, iface.Name, err)
+				llog.Warnf(n.tag(), "refresh %s via %s failed: %v; falling back to system resolver", forAddr, iface.Name, err)
 			} else {
 				newIPs = ips
 			}
@@ -150,12 +150,12 @@ func (n *NetCatcher) RefreshRoute(forAddr string) error {
 
 		if len(toDelete) > 0 {
 			if err := route.DeleteRoutes(toDelete); err != nil {
-				log.Printf("%s: [warn] delete stale routes for %s: %v", n.config.Name, forAddr, err)
+				llog.Warnf(n.tag(), "delete stale routes for %s: %v", forAddr, err)
 			}
 		}
 		if len(toAdd) > 0 {
 			if err := route.AddRoutes(toAdd); err != nil {
-				log.Printf("%s: [warn] add refreshed routes for %s: %v", n.config.Name, forAddr, err)
+				llog.Warnf(n.tag(), "add refreshed routes for %s: %v", forAddr, err)
 			}
 		}
 	}
@@ -191,11 +191,13 @@ func (n *NetCatcher) emitStatus() {
 	}
 }
 
+func (n *NetCatcher) tag() string { return "netcatcher/" + n.config.Name }
+
 func (n *NetCatcher) resolveRoutes(gateway string) {
 	n.routes = []routeEntry{}
 	iface, ifaceErr := net.InterfaceByName(n.config.Name)
 	if ifaceErr != nil {
-		log.Printf("%s: [warn] lookup interface for DNS binding: %v", n.config.Name, ifaceErr)
+		llog.Warnf(n.tag(), "lookup interface for DNS binding: %v", ifaceErr)
 	}
 	for _, addr := range n.config.Routes {
 		_, ipnet, err := net.ParseCIDR(addr)
@@ -215,14 +217,14 @@ func (n *NetCatcher) resolveRoutes(gateway string) {
 		if iface != nil {
 			ips, err = lookupIPViaInterface(iface, gateway, n.config.DNS, addr)
 			if err != nil || len(ips) == 0 {
-				log.Printf("%s: [warn] lookup %s via %s fail %v; falling back to system resolver\n", n.config.Name, addr, iface.Name, err)
+				llog.Warnf(n.tag(), "lookup %s via %s failed: %v; falling back to system resolver", addr, iface.Name, err)
 				ips = nil
 			}
 		}
 		if len(ips) == 0 {
 			ips, err = net.LookupIP(addr)
 			if err != nil {
-				log.Printf("%s: [warn] lookup %s fail %v\n", n.config.Name, addr, err)
+				llog.Warnf(n.tag(), "lookup %s failed: %v", addr, err)
 			}
 		}
 		for _, ip := range ips {
@@ -236,17 +238,17 @@ func (n *NetCatcher) resolveRoutes(gateway string) {
 func (n *NetCatcher) addRoutesTo(addr net.Addr) {
 	ip, _, err := net.ParseCIDR(addr.String())
 	if err != nil {
-		log.Printf("%s: [error] parse %s CIDR fail %v", n.config.Name, addr.String(), err)
+		llog.Errorf(n.tag(), "parse %s CIDR failed: %v", addr.String(), err)
 		return
 	}
 	n.resolveRoutes(ip.String())
 	specs := make([]route.RouteSpec, len(n.routes))
 	for i, r := range n.routes {
 		specs[i] = route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask}
-		log.Printf("%s: [debug] add route %s", n.config.Name, r)
+		llog.Debugf(n.tag(), "add route %s", r)
 	}
 	if err := route.AddRoutes(specs); err != nil {
-		log.Printf("%s: [warn] add routes failed: %v", n.config.Name, err)
+		llog.Warnf(n.tag(), "add routes failed: %v", err)
 	}
 }
 
@@ -257,10 +259,10 @@ func (n *NetCatcher) clearRoutes() {
 	specs := make([]route.RouteSpec, len(n.routes))
 	for i, r := range n.routes {
 		specs[i] = route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask}
-		log.Printf("%s: [debug] delete route %s", n.config.Name, r)
+		llog.Debugf(n.tag(), "delete route %s", r)
 	}
 	if err := route.DeleteRoutes(specs); err != nil {
-		log.Printf("%s: [warn] delete routes failed: %v", n.config.Name, err)
+		llog.Warnf(n.tag(), "delete routes failed: %v", err)
 	}
 }
 
@@ -278,7 +280,11 @@ func (n *NetCatcher) Watch(ctx context.Context) {
 			if event == nil || n.current == event.status {
 				continue
 			}
-			log.Printf("%s: [info] interface status changed to %v\n", n.config.Name, event.status == connected)
+			if event.status == connected {
+				llog.Infof(n.tag(), "interface connected")
+			} else {
+				llog.Infof(n.tag(), "interface disconnected")
+			}
 			n.current = event.status
 			if event.status == connected {
 				n.addRoutesTo(event.addr)
@@ -296,12 +302,12 @@ func (n *NetCatcher) poll() *changeEvent {
 				return &changeEvent{status: disconnected}
 			}
 		}
-		log.Printf("%s: [warn] get interface fail %v\n", n.config.Name, err)
+		llog.Warnf(n.tag(), "get interface failed: %v", err)
 		return nil
 	}
 	addrs, err := i.Addrs()
 	if err != nil || len(addrs) == 0 {
-		log.Printf("%s: [warn] get interface addr fail %v\n", n.config.Name, err)
+		llog.Warnf(n.tag(), "get interface addr failed: %v", err)
 		return nil
 	}
 	return &changeEvent{status: connected, addr: addrs[0]}

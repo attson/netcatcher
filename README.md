@@ -6,13 +6,16 @@ A desktop application that monitors network interfaces and automatically adds st
 
 ## Features
 
-- Dashboard showing active interfaces and their route status
-- Route config editor — manage interfaces and routes through the GUI
+- Dashboard showing active interfaces and their route status; each interface card has its own Edit / Apply / Cancel flow
+- Per-interface route and DNS config editor — manage interfaces, routes, and DNS servers through the GUI
+- Routes visually dim + strike-through when the monitor is stopped or the interface is disconnected, so state is obvious at a glance
 - Real-time log viewer — see route add/remove events as they happen
 - Route connectivity testing (ping)
+- **TUN proxy compatibility** (opt-in) — runs a local DNS forwarder + `/etc/resolver/` entries so domain routes resolve to real IPs when the host uses a TUN-mode proxy (Clash / Mihomo / Surge)
+- DNS queries for route resolution are bound to the monitored interface (`IP_BOUND_IF` / `IP_UNICAST_IF`), bypassing TUN DNS hijacking
 - System notifications on interface connect/disconnect
 - Multi-language support (English / Chinese)
-- Settings panel for app preferences (auto-start, notifications, language)
+- Settings panel for app preferences (auto-start, notifications, language, TUN compatibility)
 - System tray integration — the app hides to the tray when the window is closed; use the tray menu to quit
 
 ## Installation
@@ -63,14 +66,14 @@ go build -o build/bin/netcatcher-app .
 
 ### Dashboard
 
-The main screen shows status overview and inline route configuration. System network interfaces are listed in a dropdown with VPN service names (e.g. `ppp0 (My VPN)`) for easy identification.
+The main screen shows status overview and per-interface route configuration. System network interfaces are listed in a dropdown with VPN service names (e.g. `ppp0 (My VPN)`) for easy identification.
 
-- Select an interface from the dropdown and click **Add Interface**
-- Expand the interface card to add routes — domain names, IPs, or CIDR blocks
-- Click **Save & Apply** (appears only when changes are pending)
-- Use **Ping** to test route connectivity
-- Use **Start** / **Stop** to control monitoring
-- Domain routes show their resolved IP addresses
+- Select an interface from the dropdown and click **Add Interface** — the new card opens in edit mode
+- Click **Edit** on any existing card to enter edit mode; add or remove routes (domain names, IPs, CIDR blocks) and DNS servers (inline chips next to the gateway)
+- Click **Apply** to save and apply, or **Cancel** to discard changes to that card
+- Use **Ping** to test route connectivity; the latency shows next to the route
+- Use **Start** / **Stop** to control monitoring — inactive routes dim + strike-through so you can see what is live
+- Domain routes show their resolved IP addresses alongside the name
 
 ![Dashboard](doc/screenshots/dashboard.png)
 
@@ -85,6 +88,7 @@ Real-time log viewer showing interface up/down events, route add/remove operatio
 - **Launch at startup** — register/unregister the app for auto-start on login.
 - **Notifications** — toggle system notifications when interfaces connect or disconnect.
 - **Language** — switch between English and Chinese. The preference persists across restarts.
+- **TUN proxy compatibility** — when you have a TUN-mode proxy running (Clash / Mihomo / Surge), enable this so NetCatcher runs a local DNS forwarder and writes `/etc/resolver/<domain>` entries for each configured domain route. macOS then routes those lookups to the forwarder (bound to the VPN interface) and returns real IPs instead of the proxy's fake IPs. Leave off in plain setups.
 
 ![Settings](doc/screenshots/settings.png)
 
@@ -103,9 +107,11 @@ The config format is JSON. Entries support hostnames (resolved via DNS at connec
 
 ```json
 {
+  "tunMode": false,
   "interfaces": [
     {
       "name": "ppp0",
+      "dns": ["114.114.114.114"],
       "routes": [
         "github.com",
         "192.168.188.11",
@@ -116,13 +122,20 @@ The config format is JSON. Entries support hostnames (resolved via DNS at connec
 }
 ```
 
-The `name` field must match the OS network interface name exactly (e.g. the VPN adapter name).
+- `name` must match the OS network interface name exactly (e.g. the VPN adapter name).
+- `dns` (optional) — DNS servers to query via the monitored interface when resolving domain routes. When `tunMode` is on, the local DNS forwarder also uses this list for matching queries.
+- `tunMode` (optional, default `false`) — enable the TUN proxy compatibility flow. Equivalent to the Settings toggle.
 
 ## Platform Notes
 
 ### macOS
 
-The app prompts for admin credentials once on the first route operation. A sudoers rule is created to allow passwordless `route` calls afterwards. Routes are automatically cleaned up when the app exits.
+The app prompts for admin credentials once on the first operation that needs them. The osascript:
+
+1. Installs a small privileged helper at `/usr/local/sbin/netcatcher-resolver-helper` (root-owned, 0755). The helper only accepts `install <port> <domain>...` and `remove <domain>...` with strict input validation.
+2. Writes `/etc/sudoers.d/netcatcher` granting passwordless `sudo /sbin/route` and `sudo -n netcatcher-resolver-helper`.
+
+Every subsequent route change and `/etc/resolver/` update goes through `sudo -n` silently — no further prompts. Routes and `/etc/resolver/` entries are cleaned up when the monitor stops.
 
 ### Windows
 
@@ -140,5 +153,6 @@ This stops all traffic from being sent through the VPN, allowing NetCatcher's st
 
 ## Notes
 
-- If a local DNS proxy or global proxy is active, domain names may resolve to incorrect IP addresses. Disable the proxy before starting NetCatcher if you rely on hostname-based routes.
-- Routes are re-resolved fresh on each connect event, so DNS changes are picked up automatically when the interface reconnects.
+- Route-resolution DNS queries are always bound to the monitored interface (`IP_BOUND_IF` / `IP_UNICAST_IF`), so a TUN-mode proxy cannot hijack them with fake IPs. If the bound lookup fails (unreachable DNS, no interface DNS configured), NetCatcher falls back to the system resolver.
+- If the host runs a TUN-mode proxy (Clash / Mihomo / Surge) AND the applications themselves also need real IPs (not just NetCatcher's routing), turn on **TUN proxy compatibility** in Settings. Without it, your browser/terminal will still get fake IPs for the configured domains because the system DNS path is hijacked at the utun layer.
+- Routes and DNS lookups are re-run fresh on each connect event, so DNS changes are picked up automatically when the interface reconnects.

@@ -1,7 +1,9 @@
 {
+  "tunMode": false,
   "interfaces": [
     {
       "name": "ppp0",
+      "dns": ["114.114.114.114"],
       "routes": [
         "github.com",
         "192.168.188.11",

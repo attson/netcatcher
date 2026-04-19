@@ -4,16 +4,19 @@ import { useI18n } from 'vue-i18n'
 import { Call } from '@wailsio/runtime'
 import { useConfigStore } from '../stores/config'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const configStore = useConfigStore()
 const autoStart = ref(false)
 const notifications = ref(true)
 const currentLocale = ref(locale.value)
 const loading = ref(true)
+const tunModeSaving = ref(false)
+const tunModeMessage = ref('')
 const appVersion = __APP_VERSION__
 
 onMounted(async () => {
   await configStore.fetchConfigPath()
+  await configStore.fetchConfig()
   try {
     const result = await Call.ByName('main.App.GetAutoStart')
     autoStart.value = result
@@ -24,6 +27,22 @@ onMounted(async () => {
   } catch (e) { console.error('GetNotifications failed:', e) }
   loading.value = false
 })
+
+async function toggleTunMode() {
+  const next = !configStore.config.tunMode
+  configStore.config.tunMode = next
+  tunModeSaving.value = true
+  try {
+    await configStore.saveConfig()
+    tunModeMessage.value = t('routes.saved')
+    setTimeout(() => { tunModeMessage.value = '' }, 2000)
+  } catch (e) {
+    configStore.config.tunMode = !next
+    tunModeMessage.value = t('routes.saveFailed') + e
+  } finally {
+    tunModeSaving.value = false
+  }
+}
 
 async function toggleAutoStart() {
   autoStart.value = !autoStart.value
@@ -81,6 +100,20 @@ function changeLocale() {
         </select>
       </div>
     </div>
+    <div class="card" style="margin-top: 16px;">
+      <h2>{{ $t('settings.network') }}</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
+        <div style="flex: 1; padding-right: 16px;">
+          <div style="font-weight: 500; display: flex; align-items: center; gap: 8px;">
+            {{ $t('settings.tunMode') }}
+            <span v-if="tunModeMessage" style="font-size: 12px; color: var(--success); font-weight: normal;">{{ tunModeMessage }}</span>
+          </div>
+          <div style="color: var(--text-secondary); font-size: 13px;">{{ $t('settings.tunModeDesc') }}</div>
+        </div>
+        <div class="toggle" :class="{ active: configStore.config.tunMode, disabled: tunModeSaving }" @click="!tunModeSaving && toggleTunMode()"></div>
+      </div>
+    </div>
+
     <div class="card" style="margin-top: 16px;">
       <h2>{{ $t('settings.configuration') }}</h2>
       <div style="padding: 8px 0;">

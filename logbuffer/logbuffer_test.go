@@ -92,4 +92,41 @@ func TestWriter(t *testing.T) {
 	if entries[0].Message != "hello from writer" {
 		t.Fatalf("expected 'hello from writer', got '%s'", entries[0].Message)
 	}
+	if entries[0].Level != "info" {
+		t.Fatalf("expected info, got %s", entries[0].Level)
+	}
+}
+
+func TestWriterParsesLevelPrefix(t *testing.T) {
+	buf := New(10, nil)
+	w := buf.Writer("info")
+	inputs := []struct {
+		raw       string
+		wantLvl   string
+		wantMsg   string
+	}{
+		{"[warn] dns: forward failed\n", "warn", "dns: forward failed"},
+		{"[error] config: load failed: EOF\n", "error", "config: load failed: EOF"},
+		{"[debug] netcatcher/ppp0: add route 1.2.3.4\n", "debug", "netcatcher/ppp0: add route 1.2.3.4"},
+		{"[info] app: ready\n", "info", "app: ready"},
+		{"no prefix here\n", "info", "no prefix here"},
+		{"[unknown] something\n", "info", "[unknown] something"},
+	}
+	for _, tc := range inputs {
+		if _, err := w.Write([]byte(tc.raw)); err != nil {
+			t.Fatalf("write %q: %v", tc.raw, err)
+		}
+	}
+	entries := buf.Recent(10)
+	if len(entries) != len(inputs) {
+		t.Fatalf("expected %d entries, got %d", len(inputs), len(entries))
+	}
+	for i, tc := range inputs {
+		if entries[i].Level != tc.wantLvl {
+			t.Errorf("[%d] level = %q, want %q", i, entries[i].Level, tc.wantLvl)
+		}
+		if entries[i].Message != tc.wantMsg {
+			t.Errorf("[%d] message = %q, want %q", i, entries[i].Message, tc.wantMsg)
+		}
+	}
 }
