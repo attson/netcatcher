@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	nc "netcatcher/netcatcher"
@@ -11,12 +12,14 @@ import (
 )
 
 type Notifier struct {
-	enabled bool
-	svc     *notifications.NotificationService
+	enabled   bool
+	svc       *notifications.NotificationService
+	mu        sync.Mutex
+	lastState map[string]bool
 }
 
 func NewNotifier(svc *notifications.NotificationService) *Notifier {
-	return &Notifier{enabled: true, svc: svc}
+	return &Notifier{enabled: true, svc: svc, lastState: make(map[string]bool)}
 }
 
 func (n *Notifier) SetEnabled(enabled bool) {
@@ -28,6 +31,14 @@ func (n *Notifier) IsEnabled() bool {
 }
 
 func (n *Notifier) OnStatusChange(status nc.InterfaceStatus) {
+	n.mu.Lock()
+	prev, seen := n.lastState[status.InterfaceName]
+	n.lastState[status.InterfaceName] = status.Connected
+	n.mu.Unlock()
+	if !seen || prev == status.Connected {
+		return
+	}
+
 	if !n.enabled || n.svc == nil {
 		return
 	}

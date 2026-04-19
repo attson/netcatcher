@@ -66,6 +66,105 @@ func NewNetCatcher(cfg config.Interface, onStatus StatusCallback) *NetCatcher {
 	}
 }
 
+func (n *NetCatcher) Name() string {
+	return n.config.Name
+}
+
+func (n *NetCatcher) RefreshRoute(forAddr string) error {
+	if _, _, err := net.ParseCIDR(forAddr); err == nil {
+		return nil
+	}
+	if net.ParseIP(forAddr) != nil {
+		return nil
+	}
+
+	isConnected := n.current == connected
+
+	var gateway string
+	for _, r := range n.routes {
+		if r.gateway != "" {
+			gateway = r.gateway
+			break
+		}
+	}
+
+	var newIPs []net.IP
+	if isConnected && gateway != "" {
+		iface, ifaceErr := net.InterfaceByName(n.config.Name)
+		if ifaceErr == nil && iface != nil {
+			ips, err := lookupIPViaInterface(iface, gateway, n.config.DNS, forAddr)
+			if err != nil || len(ips) == 0 {
+				log.Printf("%s: [warn] refresh %s via %s fail %v; falling back to system resolver", n.config.Name, forAddr, iface.Name, err)
+			} else {
+				newIPs = ips
+			}
+		}
+	}
+	if len(newIPs) == 0 {
+		ips, err := net.LookupIP(forAddr)
+		if err != nil {
+			return fmt.Errorf("lookup %s: %w", forAddr, err)
+		}
+		newIPs = ips
+	}
+
+	entryGateway := gateway
+	if !isConnected {
+		entryGateway = ""
+	}
+
+	oldByIP := map[string]routeEntry{}
+	kept := make([]routeEntry, 0, len(n.routes))
+	for _, r := range n.routes {
+		if r.forAddr == forAddr {
+			oldByIP[r.ip] = r
+		} else {
+			kept = append(kept, r)
+		}
+	}
+
+	newEntries := make([]routeEntry, 0, len(newIPs))
+	newByIP := map[string]routeEntry{}
+	for _, ip := range newIPs {
+		ipStr := ip.String()
+		if _, dup := newByIP[ipStr]; dup {
+			continue
+		}
+		entry := routeEntry{forAddr: forAddr, ip: ipStr, gateway: entryGateway}
+		newByIP[ipStr] = entry
+		newEntries = append(newEntries, entry)
+	}
+
+	if isConnected && gateway != "" {
+		var toDelete, toAdd []route.RouteSpec
+		for ip, r := range oldByIP {
+			if _, ok := newByIP[ip]; !ok {
+				toDelete = append(toDelete, route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask})
+			}
+		}
+		for ip, r := range newByIP {
+			if _, ok := oldByIP[ip]; !ok {
+				toAdd = append(toAdd, route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask})
+			}
+		}
+
+		if len(toDelete) > 0 {
+			if err := route.DeleteRoutes(toDelete); err != nil {
+				log.Printf("%s: [warn] delete stale routes for %s: %v", n.config.Name, forAddr, err)
+			}
+		}
+		if len(toAdd) > 0 {
+			if err := route.AddRoutes(toAdd); err != nil {
+				log.Printf("%s: [warn] add refreshed routes for %s: %v", n.config.Name, forAddr, err)
+			}
+		}
+	}
+
+	n.routes = append(kept, newEntries...)
+	n.emitStatus()
+	return nil
+}
+
 func (n *NetCatcher) GetStatus() InterfaceStatus {
 	s := InterfaceStatus{
 		InterfaceName: n.config.Name,
@@ -152,7 +251,7 @@ func (n *NetCatcher) addRoutesTo(addr net.Addr) {
 }
 
 func (n *NetCatcher) clearRoutes() {
-	if len(n.routes) == 0 {
+	if len(n.routes) == 0 || n.current != connected {
 		return
 	}
 	specs := make([]route.RouteSpec, len(n.routes))

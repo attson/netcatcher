@@ -13,6 +13,7 @@ onMounted(async () => {
 
   Events.On('monitor:started', () => { monitor.fetchStatus() })
   Events.On('monitor:stopped', () => { monitor.fetchStatus() })
+  Events.On('interface:status-changed', (event) => { monitor.updateInterfaceStatus(event.data) })
 })
 </script>
 

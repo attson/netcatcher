@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Call, Events } from '@wailsio/runtime'
+import { Call } from '@wailsio/runtime'
 import { useMonitorStore } from '../stores/monitor'
 import { useConfigStore } from '../stores/config'
 
@@ -40,9 +40,6 @@ onMounted(async () => {
   try {
     systemInterfaces.value = await Call.ByName('main.App.GetNetworkInterfaces') || []
   } catch (e) { console.error('GetNetworkInterfaces failed:', e) }
-  Events.On('interface:status-changed', (event) => {
-    monitor.updateInterfaceStatus(event.data)
-  })
 })
 
 const uptime = computed(() => {
@@ -57,10 +54,10 @@ const uptime = computed(() => {
 
 function toggle(name) { expanded.value[name] = !expanded.value[name] }
 
-async function pingRoute(host) {
+async function pingRoute(ifaceName, host) {
   pingResults.value[host] = { loading: true }
   try {
-    const result = await Call.ByName('main.App.PingRoute', host)
+    const result = await Call.ByName('main.App.PingRoute', ifaceName, host)
     pingResults.value[host] = result
   } catch (e) {
     pingResults.value[host] = { reachable: false, error: e.toString() }
@@ -267,7 +264,7 @@ function isRouteActive(ifaceName, routeName) {
           <span v-if="getResolvedIps(iface.name, route).length" style="color: var(--text-secondary); user-select: text;">→ {{ getResolvedIps(iface.name, route).join(', ') }}</span>
           <button v-if="editing[iface.name]" @click="configStore.removeRoute(ifaceIdx, routeIdx)"
                   style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 16px; padding: 0 4px;" :title="$t('routes.removeRoute')">×</button>
-          <button class="btn" style="font-size: 11px; padding: 2px 8px; margin-left: auto;" @click.stop="pingRoute(route)">
+          <button class="btn" style="font-size: 11px; padding: 2px 8px; margin-left: auto;" @click.stop="pingRoute(iface.name, route)">
             {{ pingResults[route]?.loading ? '...' : $t('dashboard.ping') }}
           </button>
           <span v-if="pingResults[route] && !pingResults[route].loading" style="font-size: 12px;"

@@ -27,7 +27,11 @@ export const useMonitorStore = defineStore('monitor', () => {
 
   function updateInterfaceStatus(ifaceStatus) {
     const idx = status.value.interfaces.findIndex(i => i.interfaceName === ifaceStatus.interfaceName)
-    if (idx >= 0) status.value.interfaces[idx] = ifaceStatus
+    if (idx >= 0) {
+      status.value.interfaces[idx] = ifaceStatus
+    } else {
+      status.value.interfaces.push(ifaceStatus)
+    }
   }
 
   return { status, activeCount, totalRoutes, fetchStatus, startMonitor, stopMonitor, updateInterfaceStatus }

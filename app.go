@@ -132,7 +132,13 @@ func (a *App) GetStatus() MonitorStatus {
 	return a.manager.GetMonitorStatus()
 }
 
-func (a *App) PingRoute(host string) PingResult {
+func (a *App) PingRoute(ifaceName string, host string) PingResult {
+	if ifaceName != "" {
+		if err := a.manager.RefreshRoute(ifaceName, host); err != nil {
+			log.Printf("[warn] refresh route %s on %s: %v", host, ifaceName, err)
+		}
+	}
+
 	start := time.Now()
 	result := PingResult{Host: host}
 
