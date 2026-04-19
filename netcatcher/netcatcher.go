@@ -94,6 +94,10 @@ func (n *NetCatcher) emitStatus() {
 
 func (n *NetCatcher) resolveRoutes(gateway string) {
 	n.routes = []routeEntry{}
+	iface, ifaceErr := net.InterfaceByName(n.config.Name)
+	if ifaceErr != nil {
+		log.Printf("%s: [warn] lookup interface for DNS binding: %v", n.config.Name, ifaceErr)
+	}
 	for _, addr := range n.config.Routes {
 		_, ipnet, err := net.ParseCIDR(addr)
 		if err == nil {
@@ -108,9 +112,19 @@ func (n *NetCatcher) resolveRoutes(gateway string) {
 			})
 			continue
 		}
-		ips, err := net.LookupIP(addr)
-		if err != nil {
-			log.Printf("%s: [warn] lookup %s fail %v\n", n.config.Name, addr, err)
+		var ips []net.IP
+		if iface != nil {
+			ips, err = lookupIPViaInterface(iface, gateway, n.config.DNS, addr)
+			if err != nil || len(ips) == 0 {
+				log.Printf("%s: [warn] lookup %s via %s fail %v; falling back to system resolver\n", n.config.Name, addr, iface.Name, err)
+				ips = nil
+			}
+		}
+		if len(ips) == 0 {
+			ips, err = net.LookupIP(addr)
+			if err != nil {
+				log.Printf("%s: [warn] lookup %s fail %v\n", n.config.Name, addr, err)
+			}
 		}
 		for _, ip := range ips {
 			n.routes = append(n.routes, routeEntry{

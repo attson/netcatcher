@@ -29,7 +29,7 @@ func ensureAuth() {
 			return
 		}
 		rule := fmt.Sprintf("%s ALL=(ALL) NOPASSWD: /sbin/route", u.Username)
-		cmd := fmt.Sprintf(`do shell script "echo '%s' > %s && chmod 0440 %s" with administrator privileges`, rule, sudoersFile, sudoersFile)
+		cmd := fmt.Sprintf(`do shell script "echo '%s' > %s && chmod 0440 %s" with administrator privileges with prompt "NetCatcher 需要管理员权限以配置系统路由表（仅首次运行时需要授权）。"`, rule, sudoersFile, sudoersFile)
 		command := exec.Command("osascript", "-e", cmd)
 		command.Stderr = log.Writer()
 		command.Stdout = log.Writer()
