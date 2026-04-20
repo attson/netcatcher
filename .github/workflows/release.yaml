@@ -65,6 +65,7 @@ jobs:
           MAJ=${MAJ:-0}; MIN=${MIN:-0}; PAT=${PAT:-0}
           "$(go env GOPATH)/bin/goversioninfo" \
             -icon=build/appicon.ico \
+            -manifest=build/netcatcher.manifest \
             -o=appicon_windows_amd64.syso \
             -ver-major=$MAJ -ver-minor=$MIN -ver-patch=$PAT -ver-build=0 \
             -product-ver-major=$MAJ -product-ver-minor=$MIN -product-ver-patch=$PAT -product-ver-build=0 \
