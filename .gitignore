@@ -15,6 +15,10 @@ wailsjs/
 # Build artifacts
 build/bin/
 
+# Generated Windows resource object (icon + version metadata); produced by
+# goversioninfo during CI build from versioninfo.json + build/appicon.ico.
+*.syso
+
 # Superpowers
 .superpowers/
 build/NetCatcher.app

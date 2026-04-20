@@ -11,11 +11,6 @@ import (
 	"time"
 )
 
-// ForwarderPort is the UDP port the local DNS forwarder listens on (loopback).
-// Chosen to be non-privileged so the NetCatcher process does not need root to bind.
-// macOS `/etc/resolver/<domain>` files point here via `nameserver 127.0.0.1` + `port`.
-const ForwarderPort = 15353
-
 type forwarderRoute struct {
 	iface      *net.Interface
 	ifaceName  string
