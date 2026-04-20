@@ -69,11 +69,10 @@ NetCatcher is a Wails v3 desktop application. The frontend is Vue 3; the backend
 
 When a host runs a TUN-mode proxy (Clash / Mihomo / Surge) that hijacks all DNS traffic at the utun layer, even interface-bound lookups are compromised and applications get fake IPs. In this mode the `Manager` additionally:
 
-- Starts a UDP DNS forwarder on `127.0.0.1:15353` (`netcatcher/dnsforwarder.go`). Incoming queries are dispatched by QNAME suffix to the right monitored interface, then forwarded with `IP_BOUND_IF` set so they bypass the TUN interception.
-- Creates `/etc/resolver/<domain>` files for each domain route, each containing `nameserver 127.0.0.1` + `port 15353`. macOS's `mDNSResponder` then routes matching lookups to the forwarder while all other queries continue to hit the system default resolver (which typically returns fake IPs for TUN to handle).
-- Teardown on monitor stop removes `/etc/resolver/` entries via the helper.
-
-The privileged helper `route/resolver_darwin.go` only accepts `install <port> <domain>...` and `remove <domain>...` with strict argument validation, so the broad sudoers rule has a narrow attack surface.
+- Starts a UDP DNS forwarder on `127.0.0.1:<ForwarderPort>` (`netcatcher/dnsforwarder.go`). The port is platform-specific — macOS listens on 15353 (unprivileged; `/etc/resolver` lets us specify a port), Windows listens on 53 (NRPT cannot specify a port). See `netcatcher/forwarder_port_*.go`. Incoming queries are dispatched by QNAME suffix to the right monitored interface, then forwarded with `IP_BOUND_IF` / `IP_UNICAST_IF` set so they bypass the TUN interception.
+- **macOS** creates `/etc/resolver/<domain>` files for each domain route, each containing `nameserver 127.0.0.1` + `port 15353`. macOS's `mDNSResponder` routes matching lookups to the forwarder while all other queries continue to hit the system default resolver (which typically returns fake IPs for TUN to handle). The privileged helper `/usr/local/sbin/netcatcher-resolver-helper` only accepts `install <port> <domain>...` and `remove <domain>...` with strict argument validation (see `route/resolver_darwin.go`).
+- **Windows** uses NRPT (Name Resolution Policy Table). `route/resolver_windows.go` shells out to PowerShell `Add-DnsClientNrptRule -Namespace ".<domain>" -NameServers "127.0.0.1" -Comment "netcatcher"`. Rules are tagged with the `netcatcher` comment so cleanup can wipe stale entries precisely even after a crashed previous session. Requires NetCatcher to run as Administrator (same requirement as route management).
+- Teardown on monitor stop removes the `/etc/resolver/` entries (macOS) or NRPT rules tagged `netcatcher` (Windows).
 
 **Frontend:**
 
@@ -120,5 +119,5 @@ Config is stored at a platform-specific path:
 ## Platform Notes
 
 - macOS: the app prompts for admin password once on the first operation that requires it. The osascript sets up `/etc/sudoers.d/netcatcher` granting passwordless `/sbin/route` + `/usr/local/sbin/netcatcher-resolver-helper`, and installs the helper script (root-owned, 0755). Every subsequent route / `/etc/resolver` operation goes through `sudo -n` silently. `authUpToDate()` in `route/route_darwin.go` skips the prompt on startup if both files already exist.
-- Windows: disable "Use default gateway on remote network" in the VPN adapter settings so routes don't conflict. Build with `go build -ldflags="-H=windowsgui" ...` so the `.exe` runs without popping a console window (CI already does this). TUN mode (`/etc/resolver` equivalent via NRPT) is not implemented on Windows yet — the helpers are stubs.
+- Windows: disable "Use default gateway on remote network" in the VPN adapter settings so routes don't conflict. Build with `go build -ldflags="-H=windowsgui" ...` so the `.exe` runs without popping a console window (CI already does this). TUN mode is supported via NRPT (see above) — the forwarder binds `127.0.0.1:53`, which requires Administrator (already needed for route manipulation).
 - Both platforms require administrator/root privileges to modify the routing table.

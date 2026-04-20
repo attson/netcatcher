@@ -54,6 +54,24 @@ jobs:
           APP_VERSION: ${{ steps.ver.outputs.version }}
         run: cd frontend && npx vite build
 
+      - name: Embed Windows icon + version info
+        if: matrix.platform == 'windows'
+        shell: bash
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+          IFS='.' read -r MAJ MIN PAT <<< "${APP_VERSION:-0.0.0}"
+          MAJ=${MAJ:-0}; MIN=${MIN:-0}; PAT=${PAT:-0}
+          "$(go env GOPATH)/bin/goversioninfo" \
+            -icon=build/appicon.ico \
+            -o=appicon_windows_amd64.syso \
+            -ver-major=$MAJ -ver-minor=$MIN -ver-patch=$PAT -ver-build=0 \
+            -product-ver-major=$MAJ -product-ver-minor=$MIN -product-ver-patch=$PAT -product-ver-build=0 \
+            -file-version="${APP_VERSION}" \
+            -product-version="${APP_VERSION}" \
+            versioninfo.json
+
       - name: Build Go binary
         shell: bash
         run: |
