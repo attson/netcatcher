@@ -95,4 +95,7 @@ func TestLoadPersistsSkippedVersion(t *testing.T) {
 	if loaded.Updater.SkippedVersion != "1.4.0" {
 		t.Fatalf("expected SkippedVersion=1.4.0, got %q", loaded.Updater.SkippedVersion)
 	}
+	if !loaded.Updater.AutoCheck {
+		t.Fatalf("expected AutoCheck=true to survive round-trip")
+	}
 }

@@ -28,6 +28,9 @@ type Config struct {
 	// domain routes resolve correctly when the host uses a TUN-mode proxy
 	// (Clash / Mihomo / Surge). Leave off in plain setups.
 	TunMode bool          `json:"tunMode,omitempty"`
+	// Updater holds user preferences for the in-app auto-update flow.
+	// Always serialized: omitempty does not apply to struct values, so
+	// once a config is saved, the `updater` key is present even if zero.
 	Updater UpdaterConfig `json:"updater"`
 }
 
