@@ -1,14 +1,18 @@
 package main
 
 import (
+	"context"
 	"embed"
 	_ "embed"
+	"log/slog"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
 	"netcatcher/config"
 	"netcatcher/llog"
+	"netcatcher/updater"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -56,6 +60,36 @@ func main() {
 
 	// Register App as a service so its exported methods are available to the frontend.
 	wailsApp.RegisterService(application.NewService(app))
+
+	// Updater setup (no-op on dev builds; see updater.Start docstring).
+	configDir := filepath.Dir(configPath)
+	cfg, _ := config.Load(configPath)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	upd, err := updater.New(updater.Options{
+		CurrentVersion: AppVersion,
+		PublicKey:      UpdateVerifyPublicKey,
+		Repo:           "attson/netcatcher",
+		ConfigDir:      configDir,
+		Emit:           func(event string, data any) { wailsApp.Event.Emit(event, data) },
+		Logger:         logger,
+	})
+	if err != nil {
+		llog.Errorf("updater", "init failed: %v", err)
+	} else {
+		app.SetUpdater(upd)
+		// Apply the persisted skipped-version into runtime state so the
+		// banner stays hidden across restarts.
+		if cfg.Updater.SkippedVersion != "" {
+			_ = upd.Skip(cfg.Updater.SkippedVersion)
+		}
+		if cfg.Updater.AutoCheck {
+			go upd.Start(context.Background())
+		}
+		// Clean up leftover staging dirs from a previous unfinished install.
+		if err := updater.CleanupStale(configDir); err != nil {
+			llog.Warnf("updater", "cleanup stale: %v", err)
+		}
+	}
 
 	// Create main window
 	mainWindow := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
