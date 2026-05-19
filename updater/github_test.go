@@ -3,6 +3,7 @@ package updater
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -104,10 +105,17 @@ func TestGitHubLatestETagNotModified(t *testing.T) {
 func TestAssetForPlatformMissingReturnsTypedError(t *testing.T) {
 	rel := &Release{
 		TagName: "v1.0.0",
-		Assets: []Asset{{Name: "SHA256SUMS"}},
+		Assets:  []Asset{{Name: "SHA256SUMS"}},
 	}
 	_, err := rel.AssetForPlatform("darwin", "arm64")
 	if err == nil {
-		t.Fatalf("expected ErrNoAssetForPlatform")
+		t.Fatalf("expected ErrNoAssetForPlatform, got nil")
+	}
+	var typed *ErrNoAssetForPlatform
+	if !errors.As(err, &typed) {
+		t.Fatalf("expected *ErrNoAssetForPlatform, got %T: %v", err, err)
+	}
+	if typed.Want != "NetCatcher-arm64.app.tar.gz" {
+		t.Fatalf("Want = %q", typed.Want)
 	}
 }
