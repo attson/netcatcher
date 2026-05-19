@@ -21,6 +21,14 @@ var assets embed.FS
 //go:embed build/appicon.png
 var appIcon []byte
 
+// Populated at build time via -ldflags="-X main.AppVersion=… -X main.UpdateVerifyPublicKey=…".
+// Empty UpdateVerifyPublicKey means a development build: the updater skips
+// Ed25519 verification (SHA256 is still enforced) and disables the 24h loop.
+var (
+	AppVersion            = "dev"
+	UpdateVerifyPublicKey = ""
+)
+
 func main() {
 	configPath := config.DefaultConfigPath()
 
