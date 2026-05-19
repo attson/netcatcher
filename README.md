@@ -151,6 +151,31 @@ This stops all traffic from being sent through the VPN, allowing NetCatcher's st
 ![vpn-net.png](doc/vpn-net.png)
 ![modify- default.png](doc/modify-%20default.png)
 
+## Auto-update
+
+NetCatcher checks GitHub Releases for new versions on launch (after a 5s
+delay) and every 24h while running. When a new release ships:
+
+1. A banner appears under the navbar.
+2. Click **Download** — the asset (`.app.tar.gz` on macOS, `.exe` on
+   Windows) is downloaded into `~/Library/Application Support/NetCatcher/updates/`
+   (macOS) or `%APPDATA%\NetCatcher\updates\` (Windows).
+3. Downloads are verified against `SHA256SUMS`; release artifacts also
+   include `SHA256SUMS.sig` signed with the project's Ed25519 key.
+4. Click **Install & restart** to swap the bundle and relaunch.
+
+You can disable auto-checks in Settings → Software Update. Skip a
+specific version to silence the banner until a newer release lands.
+
+### Setting up signing (maintainers only)
+
+Run `go run ./cmd/updater-keygen` once, then store:
+- `NETCATCHER_UPDATE_VERIFY_PUBLIC_KEY` — base64 public key — as a GitHub Secret.
+- `NETCATCHER_UPDATE_SIGNING_PRIVATE_KEY` — base64 private key — also as a GitHub Secret.
+
+The release workflow injects the public key into the binary at build
+time and signs `SHA256SUMS` with the private key.
+
 ## Notes
 
 - Route-resolution DNS queries are always bound to the monitored interface (`IP_BOUND_IF` / `IP_UNICAST_IF`), so a TUN-mode proxy cannot hijack them with fake IPs. If the bound lookup fails (unreachable DNS, no interface DNS configured), NetCatcher falls back to the system resolver.

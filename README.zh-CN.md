@@ -151,6 +151,28 @@ go build -o build/bin/netcatcher-app .
 ![vpn-net.png](doc/vpn-net.png)
 ![modify- default.png](doc/modify-%20default.png)
 
+## 自动更新
+
+NetCatcher 在启动 5 秒后会检查 GitHub Releases 是否有新版本，之后每 24 小时再检查一次。
+发布新版本时：
+
+1. 导航栏下方会出现一个 banner。
+2. 点击 **下载** —— 资产文件（macOS 为 `.app.tar.gz`，Windows 为 `.exe`）会下载到
+   `~/Library/Application Support/NetCatcher/updates/`（macOS）或
+   `%APPDATA%\NetCatcher\updates\`（Windows）。
+3. 下载会通过 `SHA256SUMS` 校验；发布产物也包含 `SHA256SUMS.sig`，由项目的 Ed25519 密钥签名。
+4. 点击 **安装并重启** 替换应用并重新启动。
+
+可在 **设置 → 软件更新** 关闭自动检查。也可以"跳过此版本"来隐藏 banner，直到更新的版本发布。
+
+### 配置签名（仅维护者）
+
+运行一次 `go run ./cmd/updater-keygen`，然后将下列两项保存为 GitHub Secret：
+- `NETCATCHER_UPDATE_VERIFY_PUBLIC_KEY` —— base64 公钥。
+- `NETCATCHER_UPDATE_SIGNING_PRIVATE_KEY` —— base64 私钥。
+
+Release workflow 会在构建时把公钥注入二进制，并用私钥签名 `SHA256SUMS`。
+
 ## 注意事项
 
 - 路由解析的 DNS 查询总是绑定到监测接口（`IP_BOUND_IF` / `IP_UNICAST_IF`），TUN 模式代理无法用 fake IP 劫持。绑接口查询失败时（DNS 不可达、未配 DNS 等）会回退到系统 resolver。
