@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Call } from '@wailsio/runtime'
 import { useConfigStore } from '../stores/config'
+import SettingsUpdate from '../components/SettingsUpdate.vue'
 
 const { locale, t } = useI18n()
 const configStore = useConfigStore()
@@ -123,6 +124,8 @@ function changeLocale() {
         </div>
       </div>
     </div>
+    <SettingsUpdate />
+
     <div class="card" style="margin-top: 16px;">
       <h2>{{ $t('settings.about') }}</h2>
       <div style="padding: 8px 0; color: var(--text-secondary); font-size: 13px;">
