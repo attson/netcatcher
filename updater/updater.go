@@ -58,6 +58,9 @@ type Updater struct {
 	cacheMu sync.Mutex
 	etag    string
 	cached  *Release
+
+	autoCheckMu     sync.Mutex
+	autoCheckCancel context.CancelFunc
 }
 
 func New(opts Options) (*Updater, error) {
@@ -102,29 +105,62 @@ func New(opts Options) (*Updater, error) {
 func (u *Updater) State() State { return u.store.Snapshot() }
 
 // Start launches the 5s startup check + 24h ticker. No-op on dev builds.
+// Called once at process launch when config.Updater.AutoCheck is true.
+// The ctx parameter is retained for backwards compatibility but the loop
+// is now controlled internally via SetAutoCheck / stopAutoCheckLoop.
 func (u *Updater) Start(ctx context.Context) {
 	if u.isDev() {
 		u.logger.Info("updater: dev build, auto-check disabled")
 		return
 	}
-	go func() {
+	u.startAutoCheckLoop()
+}
+
+// startAutoCheckLoop launches (or relaunches) the 5s+24h loop. A
+// pre-existing loop is cancelled first so we never have two running
+// concurrently. Safe to call from any goroutine.
+func (u *Updater) startAutoCheckLoop() {
+	if u.isDev() {
+		return
+	}
+	u.autoCheckMu.Lock()
+	defer u.autoCheckMu.Unlock()
+	if u.autoCheckCancel != nil {
+		u.autoCheckCancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	u.autoCheckCancel = cancel
+	go u.runAutoCheckLoop(ctx)
+}
+
+// stopAutoCheckLoop cancels the running loop if any. Safe to call from
+// any goroutine; no-op if no loop is running.
+func (u *Updater) stopAutoCheckLoop() {
+	u.autoCheckMu.Lock()
+	defer u.autoCheckMu.Unlock()
+	if u.autoCheckCancel != nil {
+		u.autoCheckCancel()
+		u.autoCheckCancel = nil
+	}
+}
+
+func (u *Updater) runAutoCheckLoop(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(5 * time.Second):
+	}
+	_ = u.Check(ctx, false)
+	t := time.NewTicker(24 * time.Hour)
+	defer t.Stop()
+	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(5 * time.Second):
+		case <-t.C:
+			_ = u.Check(ctx, false)
 		}
-		_ = u.Check(ctx, false)
-		t := time.NewTicker(24 * time.Hour)
-		defer t.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-t.C:
-				_ = u.Check(ctx, false)
-			}
-		}
-	}()
+	}
 }
 
 func (u *Updater) isDev() bool { return u.opts.CurrentVersion == "dev" }
@@ -343,11 +379,19 @@ func (u *Updater) Skip(version string) error {
 	return nil
 }
 
-// SetAutoCheck is a thin pass-through; the actual persistence lives in
-// the App layer which owns the config file. This exists for symmetry
-// with the other binding methods and to allow future refactor.
+// SetAutoCheck starts or stops the auto-check loop at runtime.
+// Idempotent and safe to call from any goroutine. Persistence into
+// config.json is handled by the App layer. No-op on dev builds.
 func (u *Updater) SetAutoCheck(enabled bool) error {
 	u.logger.Info("updater: auto-check toggled", "enabled", enabled)
+	if u.isDev() {
+		return nil
+	}
+	if enabled {
+		u.startAutoCheckLoop()
+	} else {
+		u.stopAutoCheckLoop()
+	}
 	return nil
 }
 

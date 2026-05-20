@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 )
 
 // updaterTestServer mounts a GitHub-shaped /repos/<repo>/releases/latest
@@ -254,6 +255,81 @@ func TestUpdaterDevBuildShortCircuits(t *testing.T) {
 
 	if err := u.Check(context.Background(), true); err == nil {
 		t.Fatalf("expected dev-build error")
+	}
+}
+
+func TestSetAutoCheckTogglesLoop(t *testing.T) {
+	// Create a server that records hits to the latest endpoint.
+	var hits int32
+	mu := sync.Mutex{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		hits++
+		mu.Unlock()
+		w.Header().Set("Etag", "etag-test")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"tag_name": "v1.0.0",
+			"body":     "",
+			"html_url": "",
+			"assets":   []any{},
+		})
+	}))
+	defer srv.Close()
+
+	u, err := New(Options{
+		CurrentVersion: "1.0.0",
+		Repo:           "attson/netcatcher",
+		ConfigDir:      t.TempDir(),
+		HTTPClient:     srv.Client(),
+		APIBaseURL:     srv.URL,
+		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Platform:       Platform{OS: "darwin", Arch: "arm64"},
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	// Start the loop, then immediately stop it. The 5s startup delay
+	// means no check should fire within our short test window.
+	if err := u.SetAutoCheck(true); err != nil {
+		t.Fatalf("on: %v", err)
+	}
+	if err := u.SetAutoCheck(false); err != nil {
+		t.Fatalf("off: %v", err)
+	}
+
+	// Wait a bit longer than would normally let the 5s delay elapse,
+	// but the loop should have been cancelled before reaching Check.
+	time.Sleep(100 * time.Millisecond)
+
+	mu.Lock()
+	got := hits
+	mu.Unlock()
+	if got != 0 {
+		t.Fatalf("expected 0 hits after toggle-off, got %d", got)
+	}
+}
+
+func TestSetAutoCheckIsIdempotent(t *testing.T) {
+	u, err := New(Options{
+		CurrentVersion: "1.0.0",
+		Repo:           "attson/netcatcher",
+		ConfigDir:      t.TempDir(),
+		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Platform:       Platform{OS: "darwin", Arch: "arm64"},
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	// Multiple toggles on/off must not panic or leak goroutines.
+	for i := 0; i < 5; i++ {
+		if err := u.SetAutoCheck(true); err != nil {
+			t.Fatalf("on %d: %v", i, err)
+		}
+		if err := u.SetAutoCheck(false); err != nil {
+			t.Fatalf("off %d: %v", i, err)
+		}
 	}
 }
 
