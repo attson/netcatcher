@@ -200,7 +200,11 @@ func (u *Updater) Check(ctx context.Context, force bool) error {
 	}
 	defer u.releaseBusy()
 
+	var preCheckStatus Status
+	var preCheckLatest string
 	u.store.transition(func(s *State) {
+		preCheckStatus = s.Status
+		preCheckLatest = s.LatestVersion
 		s.Status = StatusChecking
 		s.Error = ""
 	})
@@ -238,10 +242,16 @@ func (u *Updater) Check(ctx context.Context, force bool) error {
 		s.ReleaseNotes = rel.Body
 		s.ReleaseURL = rel.HTMLURL
 		s.LastCheckedAt = u.now()
-		if cmp > 0 {
-			s.Status = StatusAvailable
-		} else {
+		switch {
+		case cmp <= 0:
+			// No newer version than what we run. Latest == current.
 			s.Status = StatusIdle
+		case preCheckStatus == StatusReady && preCheckLatest == latest:
+			// Already downloaded this exact version; keep the staged asset usable.
+			s.Status = StatusReady
+		default:
+			// Either a brand-new newer version, or we weren't in ready.
+			s.Status = StatusAvailable
 		}
 	})
 	return nil

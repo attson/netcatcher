@@ -333,4 +333,47 @@ func TestSetAutoCheckIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestCheckPreservesReadyStatus(t *testing.T) {
+	asset := []byte("real bytes")
+	good := sha256hex(asset)
+	sums := []byte(fmt.Sprintf("%s  NetCatcher-arm64.app.tar.gz\n", good))
+	files := map[string][]byte{
+		"NetCatcher-arm64.app.tar.gz": asset,
+		"SHA256SUMS":                  sums,
+		"SHA256SUMS.sig":              []byte("ignored"),
+	}
+	srv := updaterTestServer(t, files, "v1.5.0")
+	defer srv.Close()
+
+	u, err := New(Options{
+		CurrentVersion: "1.4.0",
+		Repo:           "attson/netcatcher",
+		ConfigDir:      t.TempDir(),
+		HTTPClient:     srv.Client(),
+		APIBaseURL:     srv.URL,
+		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Platform:       Platform{OS: "darwin", Arch: "arm64"},
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if err := u.Check(context.Background(), true); err != nil {
+		t.Fatalf("Check 1: %v", err)
+	}
+	if err := u.Download(context.Background()); err != nil {
+		t.Fatalf("Download: %v", err)
+	}
+	if u.State().Status != StatusReady {
+		t.Fatalf("expected ready after download, got %q", u.State().Status)
+	}
+
+	// Now Check again — server still serves v1.5.0. Status should STAY ready.
+	if err := u.Check(context.Background(), true); err != nil {
+		t.Fatalf("Check 2: %v", err)
+	}
+	if u.State().Status != StatusReady {
+		t.Fatalf("expected status to remain ready after re-check, got %q", u.State().Status)
+	}
+}
+
 var _ = filepath.Join
