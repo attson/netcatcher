@@ -24,6 +24,7 @@ jobs:
     env:
       GOARCH: ${{ matrix.goarch }}
       CGO_ENABLED: 1
+      UPDATE_VERIFY_PUBLIC_KEY: ${{ secrets.NETCATCHER_UPDATE_VERIFY_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -74,12 +75,16 @@ jobs:
 
       - name: Build Go binary
         shell: bash
+        env:
+          APP_VERSION: ${{ steps.ver.outputs.version }}
         run: |
           mkdir -p build/bin
+          LD="-s -w -X main.AppVersion=${APP_VERSION} -X main.UpdateVerifyPublicKey=${UPDATE_VERIFY_PUBLIC_KEY}"
           if [ "${{ matrix.platform }}" = "windows" ]; then
-            go build -ldflags="-H=windowsgui" -o "build/bin/netcatcher.exe" .
+            LD="$LD -H=windowsgui"
+            go build -ldflags="$LD" -o "build/bin/netcatcher.exe" .
           else
-            go build -o "build/bin/netcatcher" .
+            go build -ldflags="$LD" -o "build/bin/netcatcher" .
           fi
 
       - name: Package macOS .dmg
@@ -151,6 +156,22 @@ jobs:
           hdiutil create -volname "NetCatcher" -srcfolder "$DMG_DIR" -ov -format UDZO "build/bin/$DMG_NAME"
           rm -rf "$DMG_DIR" build/bin/netcatcher
 
+      - name: Package macOS .app.tar.gz
+        if: matrix.platform == 'darwin'
+        shell: bash
+        run: |
+          # The .dmg step deletes build/NetCatcher.app after creating the DMG.
+          # Rebuild a tar.gz directly from the freshly extracted .app inside the
+          # DMG so the updater can fetch a structure-identical archive.
+          DMG="build/bin/NetCatcher-${{ matrix.goarch }}.dmg"
+          MOUNT=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT" "$DMG"
+          STAGE=$(mktemp -d)
+          cp -R "$MOUNT/NetCatcher.app" "$STAGE/"
+          hdiutil detach "$MOUNT"
+          tar -czf "build/bin/NetCatcher-${{ matrix.goarch }}.app.tar.gz" -C "$STAGE" NetCatcher.app
+          rm -rf "$STAGE"
+
       - name: Rename Windows binary
         if: matrix.platform == 'windows'
         shell: bash
@@ -163,8 +184,51 @@ jobs:
           name: netcatcher-${{ matrix.platform }}-${{ matrix.goarch }}
           path: build/bin/*
 
-  release:
+  sign-checksums:
     needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f
+
+      - name: Generate SHA256SUMS
+        working-directory: artifacts
+        run: |
+          : > ../SHA256SUMS
+          for f in $(find . -maxdepth 1 -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.app.tar.gz" \) | sort); do
+              base=$(basename "$f")
+              sum=$(sha256sum "$f" | awk '{print $1}')
+              echo "$sum  $base" >> ../SHA256SUMS
+          done
+          cat ../SHA256SUMS
+
+      - name: Sign SHA256SUMS
+        env:
+          UPDATE_SIGNING_PRIVATE_KEY: ${{ secrets.NETCATCHER_UPDATE_SIGNING_PRIVATE_KEY }}
+        run: go run ./.github/scripts/sign-checksums.go SHA256SUMS SHA256SUMS.sig
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: |
+            SHA256SUMS
+            SHA256SUMS.sig
+
+  release:
+    needs: [build, sign-checksums]
     runs-on: ubuntu-latest
     permissions:
       contents: write

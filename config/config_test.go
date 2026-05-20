@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -49,5 +50,52 @@ func TestDefaultConfigPath(t *testing.T) {
 	dir := filepath.Dir(path)
 	if dir == "" {
 		t.Fatal("config directory is empty")
+	}
+}
+
+func TestLoadDefaultsAutoCheckTrue(t *testing.T) {
+	// Existing file has no "updater" key (legacy users).
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(path, []byte(`{"interfaces":[]}`), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.Updater.AutoCheck {
+		t.Fatalf("expected Updater.AutoCheck default true, got false")
+	}
+}
+
+func TestLoadRespectsAutoCheckFalse(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(path, []byte(`{"interfaces":[],"updater":{"autoCheck":false}}`), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Updater.AutoCheck {
+		t.Fatalf("expected AutoCheck=false to be preserved")
+	}
+}
+
+func TestLoadPersistsSkippedVersion(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	cfg := Config{Updater: UpdaterConfig{AutoCheck: true, SkippedVersion: "1.4.0"}}
+	if err := Save(path, cfg); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded.Updater.SkippedVersion != "1.4.0" {
+		t.Fatalf("expected SkippedVersion=1.4.0, got %q", loaded.Updater.SkippedVersion)
+	}
+	if !loaded.Updater.AutoCheck {
+		t.Fatalf("expected AutoCheck=true to survive round-trip")
 	}
 }

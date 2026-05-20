@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"netcatcher/llog"
 	"netcatcher/logbuffer"
 	nc "netcatcher/netcatcher"
+	"netcatcher/updater"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
@@ -33,6 +35,7 @@ type App struct {
 	configPath string
 	logBuf     *logbuffer.Buffer
 	app        *application.App
+	updater    *updater.Updater
 }
 
 func NewApp(configPath string, wailsApp *application.App, notifSvc *notifications.NotificationService) *App {
@@ -208,4 +211,76 @@ func (a *App) GetNetworkInterfaces() []NetworkInterface {
 		result = append(result, NetworkInterface{Name: i.Name, Label: label})
 	}
 	return result
+}
+
+// SetUpdater is called once from main.go after the updater is constructed.
+func (a *App) SetUpdater(u *updater.Updater) { a.updater = u }
+
+func (a *App) GetUpdateState() updater.State {
+	if a.updater == nil {
+		return updater.State{Status: updater.StatusIdle}
+	}
+	return a.updater.State()
+}
+
+func (a *App) CheckUpdate(force bool) error {
+	if a.updater == nil {
+		return errors.New("updater not initialised")
+	}
+	return a.updater.Check(a.ctx, force)
+}
+
+func (a *App) StartDownload() error {
+	if a.updater == nil {
+		return errors.New("updater not initialised")
+	}
+	return a.updater.Download(a.ctx)
+}
+
+func (a *App) InstallAndQuit() error {
+	if a.updater == nil {
+		return errors.New("updater not initialised")
+	}
+	if err := a.updater.InstallAndQuit(a.ctx); err != nil {
+		return err
+	}
+	// Give the helper a beat to detach before Wails tears the window down.
+	go func() {
+		time.Sleep(250 * time.Millisecond)
+		if a.app != nil {
+			a.app.Quit()
+		}
+	}()
+	return nil
+}
+
+func (a *App) SkipVersion(version string) error {
+	if a.updater == nil {
+		return errors.New("updater not initialised")
+	}
+	if err := a.updater.Skip(version); err != nil {
+		return err
+	}
+	// Persist into config.
+	cfg, err := config.Load(a.configPath)
+	if err != nil {
+		return err
+	}
+	cfg.Updater.SkippedVersion = version
+	return config.Save(a.configPath, cfg)
+}
+
+func (a *App) SetAutoCheck(enabled bool) error {
+	if a.updater == nil {
+		return errors.New("updater not initialised")
+	}
+	if err := a.updater.SetAutoCheck(enabled); err != nil {
+		return err
+	}
+	cfg, err := config.Load(a.configPath)
+	if err != nil {
+		return err
+	}
+	cfg.Updater.AutoCheck = enabled
+	return config.Save(a.configPath, cfg)
 }

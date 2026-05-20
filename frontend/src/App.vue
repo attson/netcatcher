@@ -3,13 +3,17 @@ import { onMounted } from 'vue'
 import { Events } from '@wailsio/runtime'
 import { useMonitorStore } from './stores/monitor'
 import { useLogStore } from './stores/logs'
+import { useUpdaterStore } from './stores/updater'
+import UpdateBanner from './components/UpdateBanner.vue'
 
 const monitor = useMonitorStore()
 const logStore = useLogStore()
+const updater = useUpdaterStore()
 
 onMounted(async () => {
   await monitor.fetchStatus()
   await logStore.fetchRecent()
+  await updater.init()
 
   Events.On('monitor:started', () => { monitor.fetchStatus() })
   Events.On('monitor:stopped', () => { monitor.fetchStatus() })
@@ -31,8 +35,15 @@ onMounted(async () => {
         </span>
       </div>
     </nav>
-    <main class="content">
-      <router-view />
-    </main>
+    <div class="layout-main">
+      <UpdateBanner />
+      <main class="content">
+        <router-view />
+      </main>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.layout-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+</style>
