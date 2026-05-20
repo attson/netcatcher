@@ -21,6 +21,7 @@ jobs:
             platform: windows
             goarch: amd64
     runs-on: ${{ matrix.os }}
+    environment: prod
     env:
       GOARCH: ${{ matrix.goarch }}
       CGO_ENABLED: 1
@@ -187,6 +188,7 @@ jobs:
   sign-checksums:
     needs: build
     runs-on: ubuntu-latest
+    environment: prod
     steps:
       - uses: actions/checkout@v4
 
