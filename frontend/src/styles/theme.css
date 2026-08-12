@@ -80,6 +80,7 @@ body {
 input, select {
   background: var(--bg-primary); border: 1px solid var(--border-color);
   border-radius: var(--radius); padding: 8px 12px; color: var(--text-primary);
+  caret-color: var(--text-primary);
   font-size: 14px; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
 }
 input:focus, select:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 2px var(--accent-blue-bg); }
