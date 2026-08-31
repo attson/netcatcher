@@ -3,6 +3,7 @@ package route
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -98,26 +99,49 @@ func ensureAuth() {
 			llog.Errorf("auth", "admin authorization failed: %v", err)
 			return
 		}
+		if !authUpToDate() {
+			llog.Errorf("auth", "admin authorization completed but installed permissions are invalid")
+			return
+		}
 		llog.Infof("auth", "admin authorization granted")
 	})
 }
 
-// authUpToDate returns true when both the sudoers file and the helper script
-// already exist — meaning a previous session has already installed them.
+type authCommandRunner func(name string, args ...string) error
+
+// authUpToDate verifies the installed helper and both passwordless sudo
+// capabilities. Checking only for file existence is insufficient because
+// releases before the resolver helper left a valid-looking but incomplete
+// sudoers file behind.
 func authUpToDate() bool {
-	if _, err := os.Stat(sudoersFile); err != nil {
+	return authorizationUpToDate(helperPath, func(name string, args ...string) error {
+		cmd := exec.Command(name, args...)
+		cmd.Stdout = io.Discard
+		cmd.Stderr = io.Discard
+		return cmd.Run()
+	})
+}
+
+func authorizationUpToDate(installedHelper string, run authCommandRunner) bool {
+	data, err := os.ReadFile(installedHelper)
+	if err != nil || string(data) != resolverHelperScript {
 		return false
 	}
-	st, err := os.Stat(helperPath)
-	if err != nil {
+	st, err := os.Stat(installedHelper)
+	if err != nil || st.Mode().Perm() != 0o755 {
 		return false
 	}
-	if st.Size() == 0 {
+
+	// Both probes are read-only: route only inspects localhost, while helper
+	// remove with no domains performs no filesystem changes.
+	if err := run("sudo", "-n", "/sbin/route", "-n", "get", "127.0.0.1"); err != nil {
+		return false
+	}
+	if err := run("sudo", "-n", installedHelper, "remove"); err != nil {
 		return false
 	}
 	return true
 }
-
 
 func runRoute(args ...string) error {
 	ensureAuth()
