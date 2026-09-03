@@ -25,7 +25,7 @@ const (
 // NOPASSWD sudoers entry cannot be abused to write arbitrary files.
 const resolverHelperScript = `#!/bin/sh
 set -e
-usage() { echo "usage: $0 install <port> <domain>... | remove <domain>..." >&2; exit 2; }
+usage() { echo "usage: $0 install <port> <domain>... | remove <domain>... | flush" >&2; exit 2; }
 sanitize_domain() {
     case "$1" in
         '' | *[!a-zA-Z0-9.-]* ) return 1 ;;
@@ -38,6 +38,14 @@ sanitize_port() {
     esac
     [ "$1" -ge 1 ] && [ "$1" -le 65535 ]
 }
+flush_dns() {
+    # dscacheutil clears the directory-service cache; notifying
+    # mDNSResponder makes newly-installed scoped resolvers take effect for
+    # subsequent system lookups immediately.  Either command may be absent
+    # on future macOS releases, so cache refresh is intentionally best-effort.
+    /usr/bin/dscacheutil -flushcache >/dev/null 2>&1 || true
+    /usr/bin/killall -HUP mDNSResponder >/dev/null 2>&1 || true
+}
 cmd="$1"; shift || usage
 case "$cmd" in
 install)
@@ -48,12 +56,19 @@ install)
         sanitize_domain "$d" || { echo "invalid domain: $d" >&2; continue; }
         printf 'nameserver 127.0.0.1\nport %s\n' "$port" > "/etc/resolver/$d"
     done
+    flush_dns
     ;;
 remove)
     for d in "$@"; do
         sanitize_domain "$d" || { echo "invalid domain: $d" >&2; continue; }
         rm -f "/etc/resolver/$d"
     done
+    # "remove" with no domains is also used as the read-only sudo probe.
+    [ "$#" -eq 0 ] || flush_dns
+    ;;
+flush)
+    [ "$#" -eq 0 ] || usage
+    flush_dns
     ;;
 *) usage ;;
 esac

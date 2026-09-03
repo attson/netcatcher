@@ -180,4 +180,5 @@ time and signs `SHA256SUMS` with the private key.
 
 - Route-resolution DNS queries are always bound to the monitored interface (`IP_BOUND_IF` / `IP_UNICAST_IF`), so a TUN-mode proxy cannot hijack them with fake IPs. If the bound lookup fails (unreachable DNS, no interface DNS configured), NetCatcher falls back to the system resolver.
 - If the host runs a TUN-mode proxy (Clash / Mihomo / Surge) AND the applications themselves also need real IPs (not just NetCatcher's routing), turn on **TUN proxy compatibility** in Settings. Without it, your browser/terminal will still get fake IPs for the configured domains because the system DNS path is hijacked at the utun layer.
+- NetCatcher automatically refreshes the system DNS cache after a VPN interface connects, a domain route is refreshed manually, or TUN resolver rules change. Browser-private DNS and connection pools are separate; if a page still reuses an old connection, close that connection in the browser or TUN proxy and retry.
 - Routes and DNS lookups are re-run fresh on each connect event, so DNS changes are picked up automatically when the interface reconnects.

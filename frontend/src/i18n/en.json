@@ -68,7 +68,7 @@
   "settings.languageDesc": "Choose your preferred language",
   "settings.network": "Network",
   "settings.tunMode": "TUN proxy compatibility",
-  "settings.tunModeDesc": "Run a local DNS forwarder so domain routes resolve to real IPs when the host uses a TUN-mode proxy (Clash / Mihomo / Surge). Leave off in plain setups.",
+  "settings.tunModeDesc": "Run a local DNS forwarder so domain routes resolve to real IPs when the host uses a TUN-mode proxy (Clash / Mihomo / Surge). The system DNS cache is refreshed when the VPN connects or resolver rules change. Leave off in plain setups.",
   "settings.configuration": "Configuration",
   "settings.configLocation": "Config file location",
   "settings.about": "About",

@@ -35,6 +35,14 @@ func RemoveResolverEntries(domains []string) error {
 	return runHelper(args)
 }
 
+// FlushDNSCache clears macOS's system resolver cache and notifies
+// mDNSResponder. Browser-private DNS and connection pools are outside the
+// system resolver and may still need to be refreshed separately.
+func FlushDNSCache() error {
+	ensureAuth()
+	return runHelper([]string{helperPath, "flush"})
+}
+
 func runHelper(args []string) error {
 	var cmd *exec.Cmd
 	if isRoot() {

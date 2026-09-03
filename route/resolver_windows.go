@@ -40,6 +40,9 @@ func InstallResolverEntries(domains []string, port int) error {
 			llog.Warnf("route", "add NRPT rule for %s failed: %v", ns, err)
 		}
 	}
+	if err := FlushDNSCache(); err != nil {
+		llog.Warnf("route", "refresh DNS cache after installing NRPT rules failed: %v", err)
+	}
 	return nil
 }
 
@@ -55,6 +58,20 @@ func RemoveResolverEntries(domains []string) error {
 		// If nothing matched PowerShell returns success; any other error is worth surfacing.
 		llog.Warnf("route", "remove NRPT rules failed: %v", err)
 		return err
+	}
+	if err := FlushDNSCache(); err != nil {
+		llog.Warnf("route", "refresh DNS cache after removing NRPT rules failed: %v", err)
+	}
+	return nil
+}
+
+// FlushDNSCache clears the Windows DNS client resolver cache. Browser-private
+// DNS and connection pools are outside this cache.
+func FlushDNSCache() error {
+	cmd := exec.Command("ipconfig.exe", "/flushdns")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

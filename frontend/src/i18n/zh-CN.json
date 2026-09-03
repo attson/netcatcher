@@ -68,7 +68,7 @@
   "settings.languageDesc": "选择您的首选语言",
   "settings.network": "网络",
   "settings.tunMode": "TUN 代理适配",
-  "settings.tunModeDesc": "启用本地 DNS 转发器，在系统使用 TUN 模式代理（Clash / Mihomo / Surge）时让域名路由解析为真实 IP。普通网络环境下可关闭。",
+  "settings.tunModeDesc": "启用本地 DNS 转发器，在系统使用 TUN 模式代理（Clash / Mihomo / Surge）时让域名路由解析为真实 IP。VPN 接通或解析规则变化时会自动刷新系统 DNS 缓存。普通网络环境下可关闭。",
   "settings.configuration": "配置",
   "settings.configLocation": "配置文件路径",
   "settings.about": "关于",

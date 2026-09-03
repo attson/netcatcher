@@ -161,6 +161,7 @@ func (n *NetCatcher) RefreshRoute(forAddr string) error {
 	}
 
 	n.routes = append(kept, newEntries...)
+	n.refreshSystemDNSCache()
 	n.emitStatus()
 	return nil
 }
@@ -192,6 +193,26 @@ func (n *NetCatcher) emitStatus() {
 }
 
 func (n *NetCatcher) tag() string { return "netcatcher/" + n.config.Name }
+
+func (n *NetCatcher) hasDomainRoutes() bool {
+	for _, addr := range n.config.Routes {
+		if _, _, err := net.ParseCIDR(addr); err == nil {
+			continue
+		}
+		if net.ParseIP(addr) == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func (n *NetCatcher) refreshSystemDNSCache() {
+	if err := route.FlushDNSCache(); err != nil {
+		llog.Warnf(n.tag(), "refresh system DNS cache failed: %v", err)
+	} else {
+		llog.Infof(n.tag(), "system DNS cache refreshed")
+	}
+}
 
 func (n *NetCatcher) resolveRoutes(gateway string) {
 	n.routes = []routeEntry{}
@@ -288,6 +309,9 @@ func (n *NetCatcher) Watch(ctx context.Context) {
 			n.current = event.status
 			if event.status == connected {
 				n.addRoutesTo(event.addr)
+				if n.hasDomainRoutes() {
+					n.refreshSystemDNSCache()
+				}
 			}
 			n.emitStatus()
 		}

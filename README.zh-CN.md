@@ -177,4 +177,5 @@ Release workflow 会在构建时把公钥注入二进制，并用私钥签名 `S
 
 - 路由解析的 DNS 查询总是绑定到监测接口（`IP_BOUND_IF` / `IP_UNICAST_IF`），TUN 模式代理无法用 fake IP 劫持。绑接口查询失败时（DNS 不可达、未配 DNS 等）会回退到系统 resolver。
 - 如果本机跑了 TUN 模式代理（Clash / Mihomo / Surge），且**应用层也要拿到真实 IP**（不仅仅是 NetCatcher 自己的路由解析），请在设置里打开 **TUN 代理适配**。不开的话，浏览器/终端查配置里的那些域名仍会拿到 fake IP，因为系统 DNS 路径在 utun 层被劫持了。
+- VPN 接口连通、域名路由手动刷新或 TUN 解析规则变更后，NetCatcher 会自动刷新系统 DNS 缓存。浏览器自身的 DNS 和连接池不属于系统缓存；如果页面仍复用旧连接，需要在浏览器或 TUN 代理中关闭该连接后重试。
 - 路由和 DNS 解析在每次接口连接时重新执行，因此接口重连会自动获取 DNS 变更。

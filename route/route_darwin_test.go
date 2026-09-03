@@ -3,10 +3,21 @@ package route
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
 )
+
+func TestResolverHelperScriptSyntax(t *testing.T) {
+	helper := filepath.Join(t.TempDir(), "netcatcher-resolver-helper")
+	if err := os.WriteFile(helper, []byte(resolverHelperScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("/bin/sh", "-n", helper).CombinedOutput(); err != nil {
+		t.Fatalf("helper script syntax is invalid: %v: %s", err, out)
+	}
+}
 
 func TestAuthorizationUpToDate(t *testing.T) {
 	helper := filepath.Join(t.TempDir(), "netcatcher-resolver-helper")
