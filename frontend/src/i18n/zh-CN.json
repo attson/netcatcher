@@ -43,6 +43,12 @@
   "routes.dnsHint": "（用于通过该接口解析域名；失败时回退到系统 DNS）",
   "routes.dnsPlaceholder": "DNS 服务器（如 10.0.0.1 或 10.0.0.1:53）",
   "routes.removeDns": "移除 DNS 服务器",
+  "routes.ipv4Gateway": "IPv4 网关",
+  "routes.ipv6Gateway": "IPv6 网关",
+  "routes.gatewayAuto": "自动检测",
+  "routes.gatewayHint": "留空时自动检测该接口对应的网关",
+  "routes.invalidIPv4Gateway": "请输入有效的 IPv4 地址",
+  "routes.invalidIPv6Gateway": "请输入有效的 IPv6 地址",
 
   "logs.title": "日志",
   "logs.search": "搜索...",

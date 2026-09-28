@@ -61,7 +61,7 @@ NetCatcher is a Wails v3 desktop application. The frontend is Vue 3; the backend
 1. `main.go` — initialises the Wails application, creates an `App` struct, and registers it as a binding.
 2. `App` struct (bindings) — exposes methods callable from the frontend. Delegates interface monitoring to `Manager`.
 3. `Manager` — owns the set of running `NetCatcher` goroutines, one per configured interface. Handles start/stop lifecycle and config reload.
-4. `NetCatcher` instances (`netcatcher/netcatcher.go`) — poll `net.InterfaceByName()` every 1 second. On connect: extract gateway IP, resolve configured routes (DNS / CIDR / plain IP), call `route.AddRoute()`. Routes are re-resolved fresh on each connect event. Domain lookups use a UDP socket bound to the monitored interface via `IP_BOUND_IF` (macOS) / `IP_UNICAST_IF` (Windows) — see `netcatcher/bind_*.go` and `netcatcher/resolver.go` — so TUN-mode proxies cannot hijack lookups with fake IPs. Falls back to `net.LookupIP` if the bound lookup fails.
+4. `NetCatcher` instances (`netcatcher/netcatcher.go`) — poll `net.InterfaceByName()` every 1 second. On connect, discover the interface's real IPv4 and IPv6 gateways from the OS routing table (unless overridden by `ipv4Gateway` / `ipv6Gateway`), resolve configured routes (DNS / CIDR / plain IP), pair each destination with a same-family gateway, and call `route.AddRoute()`. Routes are re-resolved fresh on each connect event. Domain lookups use a UDP socket bound to the monitored interface via `IP_BOUND_IF` (macOS) / `IP_UNICAST_IF` (Windows) — see `netcatcher/bind_*.go` and `netcatcher/resolver.go` — so TUN-mode proxies cannot hijack lookups with fake IPs. Falls back to `net.LookupIP` if the bound lookup fails.
    After routes containing domain names become active, NetCatcher refreshes the OS DNS cache (`dscacheutil` + `mDNSResponder` on macOS, `ipconfig /flushdns` on Windows) so subsequent application lookups see the new scoped resolver promptly. Browser-private DNS and socket pools are not controlled by this refresh.
 5. `route/route_darwin.go` / `route/route_windows.go` — thin OS wrappers that exec the native `route` (macOS) or `route.exe` (Windows) command. macOS uses a one-time `osascript` admin prompt to install a privileged helper at `/usr/local/sbin/netcatcher-resolver-helper` and write `/etc/sudoers.d/netcatcher` allowing passwordless `sudo /sbin/route` and `sudo -n netcatcher-resolver-helper`. Subsequent calls — including `/etc/resolver/` management — never prompt again. Windows wraps output in a GBK→UTF-8 converter (`golang.org/x/text`).
 6. `vpnname_darwin.go` — uses `scutil --nc list` to map network interface names to VPN service names (e.g. `ppp0` → `玩心不止`).
@@ -107,6 +107,8 @@ Config is stored at a platform-specific path:
   "interfaces": [
     {
       "name": "ppp0",
+      "ipv4Gateway": "10.0.0.1",
+      "ipv6Gateway": "fe80::1%ppp0",
       "dns": ["114.114.114.114"],
       "routes": ["github.com", "192.168.188.11", "192.168.188.0/24"]
     }
@@ -115,6 +117,7 @@ Config is stored at a platform-specific path:
 ```
 
 - `tunMode` (optional, default `false`) — when `true`, `Manager.Start` also spins up the DNS forwarder and writes `/etc/resolver/` entries. Leave off in plain setups.
+- `interfaces[].ipv4Gateway` / `interfaces[].ipv6Gateway` (optional) — manual gateway overrides; empty values use per-interface OS routing-table discovery.
 - `interfaces[].dns` (optional) — DNS servers queried via the monitored interface. Used both by domain lookups during route resolution AND by the DNS forwarder when `tunMode` is on. Falls back to the interface gateway and then the system resolver when empty.
 
 ## Platform Notes

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"strconv"
 	"sync"
 
 	"netcatcher/llog"
@@ -171,40 +172,47 @@ func runRoute(args ...string) error {
 	return command.Run()
 }
 
-func AddRoute(ip, gateway string, mask net.IPMask) error {
-	if mask != nil {
-		return runRoute("add", "-net", ip, gateway)
+func AddRoute(spec RouteSpec) error {
+	args, err := darwinRouteArgs("add", spec)
+	if err != nil {
+		return err
 	}
-	return runRoute("add", "-host", ip, gateway)
+	return runRoute(args...)
 }
 
-func DeleteRoute(ip, gateway string, mask net.IPMask) error {
-	if mask != nil {
-		return runRoute("delete", "-net", ip, gateway)
+func DeleteRoute(spec RouteSpec) error {
+	args, err := darwinRouteArgs("delete", spec)
+	if err != nil {
+		return err
 	}
-	return runRoute("delete", "-host", ip, gateway)
+	return runRoute(args...)
 }
 
-type RouteSpec struct {
-	Ip      string
-	Gateway string
-	Mask    net.IPMask
-}
-
-func AddRoutes(routes []RouteSpec) error {
-	for _, r := range routes {
-		if err := AddRoute(r.Ip, r.Gateway, r.Mask); err != nil {
-			llog.Warnf("route", "add %s failed: %v", r.Ip, err)
-		}
+func darwinRouteArgs(action string, spec RouteSpec) ([]string, error) {
+	_, ipv6, err := validateRouteSpec(spec)
+	if err != nil {
+		return nil, err
 	}
-	return nil
-}
-
-func DeleteRoutes(routes []RouteSpec) error {
-	for _, r := range routes {
-		if err := DeleteRoute(r.Ip, r.Gateway, r.Mask); err != nil {
-			llog.Warnf("route", "delete %s failed: %v", r.Ip, err)
-		}
+	family := "-inet"
+	if ipv6 {
+		family = "-inet6"
 	}
-	return nil
+	kind := "-host"
+	if spec.Mask != nil {
+		kind = "-net"
+	}
+	args := []string{action, family, kind}
+	if spec.InterfaceName != "" {
+		args = append(args, "-ifscope", spec.InterfaceName)
+	}
+	args = append(args, spec.IP)
+	if ipv6 && spec.Mask != nil {
+		ones, _ := spec.Mask.Size()
+		args = append(args, "-prefixlen", strconv.Itoa(ones))
+	}
+	args = append(args, spec.Gateway)
+	if !ipv6 && spec.Mask != nil {
+		args = append(args, net.IP(spec.Mask).String())
+	}
+	return args, nil
 }

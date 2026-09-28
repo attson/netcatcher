@@ -12,16 +12,16 @@ import (
 // are bound to the given interface. This bypasses system-wide TUN proxies
 // that would otherwise hijack DNS and return fake IPs.
 //
-// dnsServers is the priority list; if empty or all fail, the gateway itself
-// is tried as a last resort (many VPN peers answer DNS on :53). Each entry
-// may be either "host" or "host:port" (default port 53).
-func lookupIPViaInterface(iface *net.Interface, gateway string, dnsServers []string, host string) ([]net.IP, error) {
-	servers := make([]string, 0, len(dnsServers)+1)
+// dnsServers is the priority list; if empty or all fail, the interface's
+// gateways are tried as a last resort (many VPN peers answer DNS on :53).
+// Each entry may be either "host" or "host:port" (default port 53).
+func lookupIPViaInterface(iface *net.Interface, gateways, dnsServers []string, host string) ([]net.IP, error) {
+	servers := make([]string, 0, len(dnsServers)+len(gateways))
 	for _, s := range dnsServers {
 		servers = append(servers, withDefaultPort(s, "53"))
 	}
-	if gateway != "" {
-		servers = append(servers, net.JoinHostPort(gateway, "53"))
+	for _, gateway := range gateways {
+		servers = append(servers, withDefaultPort(gateway, "53"))
 	}
 	if len(servers) == 0 {
 		return nil, fmt.Errorf("no DNS servers available for interface %s", iface.Name)

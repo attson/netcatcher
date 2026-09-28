@@ -7,6 +7,8 @@ import (
 	"netcatcher/config"
 	"netcatcher/llog"
 	"netcatcher/route"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,6 +16,8 @@ type InterfaceStatus struct {
 	InterfaceName string        `json:"interfaceName"`
 	Connected     bool          `json:"connected"`
 	Gateway       string        `json:"gateway"`
+	IPv4Gateway   string        `json:"ipv4Gateway"`
+	IPv6Gateway   string        `json:"ipv6Gateway"`
 	Routes        []RouteStatus `json:"routes"`
 }
 
@@ -47,15 +51,18 @@ func (r routeEntry) String() string {
 
 type changeEvent struct {
 	status status
-	addr   net.Addr
+	iface  *net.Interface
 }
 
 type NetCatcher struct {
-	config   config.Interface
-	onChange chan changeEvent
-	current  status
-	routes   []routeEntry
-	onStatus StatusCallback
+	config         config.Interface
+	onChange       chan changeEvent
+	current        status
+	routes         []routeEntry
+	onStatus       StatusCallback
+	ipv4Gateway    string
+	ipv6Gateway    string
+	interfaceIndex int
 }
 
 func NewNetCatcher(cfg config.Interface, onStatus StatusCallback) *NetCatcher {
@@ -80,19 +87,11 @@ func (n *NetCatcher) RefreshRoute(forAddr string) error {
 
 	isConnected := n.current == connected
 
-	var gateway string
-	for _, r := range n.routes {
-		if r.gateway != "" {
-			gateway = r.gateway
-			break
-		}
-	}
-
 	var newIPs []net.IP
-	if isConnected && gateway != "" {
+	if isConnected && (n.ipv4Gateway != "" || n.ipv6Gateway != "") {
 		iface, ifaceErr := net.InterfaceByName(n.config.Name)
 		if ifaceErr == nil && iface != nil {
-			ips, err := lookupIPViaInterface(iface, gateway, n.config.DNS, forAddr)
+			ips, err := lookupIPViaInterface(iface, n.gatewayList(), n.config.DNS, forAddr)
 			if err != nil || len(ips) == 0 {
 				llog.Warnf(n.tag(), "refresh %s via %s failed: %v; falling back to system resolver", forAddr, iface.Name, err)
 			} else {
@@ -106,11 +105,6 @@ func (n *NetCatcher) RefreshRoute(forAddr string) error {
 			return fmt.Errorf("lookup %s: %w", forAddr, err)
 		}
 		newIPs = ips
-	}
-
-	entryGateway := gateway
-	if !isConnected {
-		entryGateway = ""
 	}
 
 	oldByIP := map[string]routeEntry{}
@@ -130,21 +124,26 @@ func (n *NetCatcher) RefreshRoute(forAddr string) error {
 		if _, dup := newByIP[ipStr]; dup {
 			continue
 		}
-		entry := routeEntry{forAddr: forAddr, ip: ipStr, gateway: entryGateway}
+		gateway := n.gatewayForIP(ip)
+		if isConnected && gateway == "" {
+			llog.Warnf(n.tag(), "skip refreshed %s address %s: no matching gateway", forAddr, ipStr)
+			continue
+		}
+		entry := routeEntry{forAddr: forAddr, ip: ipStr, gateway: gateway}
 		newByIP[ipStr] = entry
 		newEntries = append(newEntries, entry)
 	}
 
-	if isConnected && gateway != "" {
+	if isConnected {
 		var toDelete, toAdd []route.RouteSpec
 		for ip, r := range oldByIP {
 			if _, ok := newByIP[ip]; !ok {
-				toDelete = append(toDelete, route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask})
+				toDelete = append(toDelete, n.routeSpec(r))
 			}
 		}
 		for ip, r := range newByIP {
 			if _, ok := oldByIP[ip]; !ok {
-				toAdd = append(toAdd, route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask})
+				toAdd = append(toAdd, n.routeSpec(r))
 			}
 		}
 
@@ -170,7 +169,14 @@ func (n *NetCatcher) GetStatus() InterfaceStatus {
 	s := InterfaceStatus{
 		InterfaceName: n.config.Name,
 		Connected:     n.current == connected,
+		IPv4Gateway:   n.ipv4Gateway,
+		IPv6Gateway:   n.ipv6Gateway,
 		Routes:        make([]RouteStatus, len(n.routes)),
+	}
+	if n.ipv4Gateway != "" {
+		s.Gateway = n.ipv4Gateway
+	} else {
+		s.Gateway = n.ipv6Gateway
 	}
 	for i, r := range n.routes {
 		s.Routes[i] = RouteStatus{
@@ -179,9 +185,6 @@ func (n *NetCatcher) GetStatus() InterfaceStatus {
 			Gateway: r.gateway,
 			Active:  n.current == connected,
 		}
-	}
-	if len(n.routes) > 0 {
-		s.Gateway = n.routes[0].gateway
 	}
 	return s
 }
@@ -214,29 +217,35 @@ func (n *NetCatcher) refreshSystemDNSCache() {
 	}
 }
 
-func (n *NetCatcher) resolveRoutes(gateway string) {
+func (n *NetCatcher) resolveRoutes(iface *net.Interface) {
 	n.routes = []routeEntry{}
-	iface, ifaceErr := net.InterfaceByName(n.config.Name)
-	if ifaceErr != nil {
-		llog.Warnf(n.tag(), "lookup interface for DNS binding: %v", ifaceErr)
-	}
 	for _, addr := range n.config.Routes {
-		_, ipnet, err := net.ParseCIDR(addr)
+		ip, ipnet, err := net.ParseCIDR(addr)
 		if err == nil {
+			gateway := n.gatewayForIP(ip)
+			if gateway == "" {
+				llog.Warnf(n.tag(), "skip route %s: no matching gateway", addr)
+				continue
+			}
 			n.routes = append(n.routes, routeEntry{
-				forAddr: addr, ip: addr, mask: ipnet.Mask, gateway: gateway,
+				forAddr: addr, ip: ipnet.IP.String(), mask: ipnet.Mask, gateway: gateway,
 			})
 			continue
 		}
-		if net.ParseIP(addr) != nil {
+		if ip := net.ParseIP(addr); ip != nil {
+			gateway := n.gatewayForIP(ip)
+			if gateway == "" {
+				llog.Warnf(n.tag(), "skip route %s: no matching gateway", addr)
+				continue
+			}
 			n.routes = append(n.routes, routeEntry{
-				forAddr: addr, ip: addr, mask: nil, gateway: gateway,
+				forAddr: addr, ip: ip.String(), mask: nil, gateway: gateway,
 			})
 			continue
 		}
 		var ips []net.IP
 		if iface != nil {
-			ips, err = lookupIPViaInterface(iface, gateway, n.config.DNS, addr)
+			ips, err = lookupIPViaInterface(iface, n.gatewayList(), n.config.DNS, addr)
 			if err != nil || len(ips) == 0 {
 				llog.Warnf(n.tag(), "lookup %s via %s failed: %v; falling back to system resolver", addr, iface.Name, err)
 				ips = nil
@@ -249,6 +258,11 @@ func (n *NetCatcher) resolveRoutes(gateway string) {
 			}
 		}
 		for _, ip := range ips {
+			gateway := n.gatewayForIP(ip)
+			if gateway == "" {
+				llog.Warnf(n.tag(), "skip %s address %s: no matching gateway", addr, ip)
+				continue
+			}
 			n.routes = append(n.routes, routeEntry{
 				forAddr: addr, ip: ip.String(), gateway: gateway,
 			})
@@ -256,16 +270,19 @@ func (n *NetCatcher) resolveRoutes(gateway string) {
 	}
 }
 
-func (n *NetCatcher) addRoutesTo(addr net.Addr) {
-	ip, _, err := net.ParseCIDR(addr.String())
-	if err != nil {
-		llog.Errorf(n.tag(), "parse %s CIDR failed: %v", addr.String(), err)
+func (n *NetCatcher) addRoutesForInterface(iface *net.Interface) {
+	n.interfaceIndex = iface.Index
+	n.ipv4Gateway = n.resolveGateway(iface, false)
+	n.ipv6Gateway = n.resolveGateway(iface, true)
+	if n.ipv4Gateway == "" && n.ipv6Gateway == "" {
+		llog.Errorf(n.tag(), "no IPv4 or IPv6 gateway available")
+		n.routes = nil
 		return
 	}
-	n.resolveRoutes(ip.String())
+	n.resolveRoutes(iface)
 	specs := make([]route.RouteSpec, len(n.routes))
 	for i, r := range n.routes {
-		specs[i] = route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask}
+		specs[i] = n.routeSpec(r)
 		llog.Debugf(n.tag(), "add route %s", r)
 	}
 	if err := route.AddRoutes(specs); err != nil {
@@ -279,12 +296,13 @@ func (n *NetCatcher) clearRoutes() {
 	}
 	specs := make([]route.RouteSpec, len(n.routes))
 	for i, r := range n.routes {
-		specs[i] = route.RouteSpec{Ip: r.ip, Gateway: r.gateway, Mask: r.mask}
+		specs[i] = n.routeSpec(r)
 		llog.Debugf(n.tag(), "delete route %s", r)
 	}
 	if err := route.DeleteRoutes(specs); err != nil {
 		llog.Warnf(n.tag(), "delete routes failed: %v", err)
 	}
+	n.routes = nil
 }
 
 func (n *NetCatcher) Watch(ctx context.Context) {
@@ -305,13 +323,19 @@ func (n *NetCatcher) Watch(ctx context.Context) {
 				llog.Infof(n.tag(), "interface connected")
 			} else {
 				llog.Infof(n.tag(), "interface disconnected")
+				n.clearRoutes()
 			}
 			n.current = event.status
 			if event.status == connected {
-				n.addRoutesTo(event.addr)
+				n.addRoutesForInterface(event.iface)
 				if n.hasDomainRoutes() {
 					n.refreshSystemDNSCache()
 				}
+			}
+			if event.status == disconnected {
+				n.ipv4Gateway = ""
+				n.ipv6Gateway = ""
+				n.interfaceIndex = 0
 			}
 			n.emitStatus()
 		}
@@ -322,7 +346,7 @@ func (n *NetCatcher) poll() *changeEvent {
 	i, err := net.InterfaceByName(n.config.Name)
 	if err != nil {
 		if opErr, ok := err.(*net.OpError); ok {
-			if opErr.Unwrap().Error() == "no such network interface" {
+			if cause := opErr.Unwrap(); cause != nil && cause.Error() == "no such network interface" {
 				return &changeEvent{status: disconnected}
 			}
 		}
@@ -330,13 +354,80 @@ func (n *NetCatcher) poll() *changeEvent {
 		return nil
 	}
 	addrs, err := i.Addrs()
-	if err != nil || len(addrs) == 0 {
+	if err != nil {
 		llog.Warnf(n.tag(), "get interface addr failed: %v", err)
 		return nil
 	}
-	return &changeEvent{status: connected, addr: addrs[0]}
+	if len(addrs) == 0 {
+		return &changeEvent{status: disconnected}
+	}
+	return &changeEvent{status: connected, iface: i}
 }
 
 func (n *NetCatcher) Stop() {
 	n.clearRoutes()
+}
+
+func (n *NetCatcher) resolveGateway(iface *net.Interface, ipv6 bool) string {
+	configured := strings.TrimSpace(n.config.IPv4Gateway)
+	if ipv6 {
+		configured = strings.TrimSpace(n.config.IPv6Gateway)
+	}
+	if configured != "" {
+		parts := strings.SplitN(configured, "%", 2)
+		address := parts[0]
+		ip := net.ParseIP(address)
+		if ip == nil || (ip.To4() == nil) != ipv6 {
+			llog.Errorf(n.tag(), "configured %s gateway is invalid: %s", familyName(ipv6), configured)
+			return ""
+		}
+		if len(parts) == 2 && parts[1] != iface.Name && parts[1] != strconv.Itoa(iface.Index) {
+			llog.Errorf(n.tag(), "configured IPv6 gateway scope %q does not match interface %s", parts[1], iface.Name)
+			return ""
+		}
+		llog.Infof(n.tag(), "using configured %s gateway %s", familyName(ipv6), configured)
+		return configured
+	}
+	gateway, err := route.DiscoverGateway(iface, ipv6)
+	if err != nil {
+		llog.Debugf(n.tag(), "auto-detect %s gateway: %v", familyName(ipv6), err)
+		return ""
+	}
+	llog.Infof(n.tag(), "auto-detected %s gateway %s", familyName(ipv6), gateway)
+	return gateway
+}
+
+func (n *NetCatcher) gatewayForIP(ip net.IP) string {
+	if ip.To4() != nil {
+		return n.ipv4Gateway
+	}
+	return n.ipv6Gateway
+}
+
+func (n *NetCatcher) gatewayList() []string {
+	gateways := make([]string, 0, 2)
+	if n.ipv4Gateway != "" {
+		gateways = append(gateways, n.ipv4Gateway)
+	}
+	if n.ipv6Gateway != "" {
+		gateways = append(gateways, n.ipv6Gateway)
+	}
+	return gateways
+}
+
+func (n *NetCatcher) routeSpec(entry routeEntry) route.RouteSpec {
+	return route.RouteSpec{
+		IP:             entry.ip,
+		Gateway:        entry.gateway,
+		Mask:           entry.mask,
+		InterfaceName:  n.config.Name,
+		InterfaceIndex: n.interfaceIndex,
+	}
+}
+
+func familyName(ipv6 bool) string {
+	if ipv6 {
+		return "IPv6"
+	}
+	return "IPv4"
 }

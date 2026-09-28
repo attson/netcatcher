@@ -7,7 +7,7 @@ A desktop application that monitors network interfaces and automatically adds st
 ## Features
 
 - Dashboard showing active interfaces and their route status; each interface card has its own Edit / Apply / Cancel flow
-- Per-interface route and DNS config editor — manage interfaces, routes, and DNS servers through the GUI
+- Per-interface route, gateway, and DNS config editor — manage IPv4/IPv6 routes, automatic or overridden gateways, and DNS servers through the GUI
 - Routes visually dim + strike-through when the monitor is stopped or the interface is disconnected, so state is obvious at a glance
 - Real-time log viewer — see route add/remove events as they happen
 - Route connectivity testing (ping)
@@ -111,6 +111,8 @@ The config format is JSON. Entries support hostnames (resolved via DNS at connec
   "interfaces": [
     {
       "name": "ppp0",
+      "ipv4Gateway": "10.0.0.1",
+      "ipv6Gateway": "fe80::1%ppp0",
       "dns": ["114.114.114.114"],
       "routes": [
         "github.com",
@@ -123,6 +125,7 @@ The config format is JSON. Entries support hostnames (resolved via DNS at connec
 ```
 
 - `name` must match the OS network interface name exactly (e.g. the VPN adapter name).
+- `ipv4Gateway` / `ipv6Gateway` (optional) — override the gateway for that address family. Leave either field empty to detect the interface's real gateway from the OS routing table. IPv6 link-local gateways may include an interface scope, such as `fe80::1%en0`.
 - `dns` (optional) — DNS servers to query via the monitored interface when resolving domain routes. When `tunMode` is on, the local DNS forwarder also uses this list for matching queries.
 - `tunMode` (optional, default `false`) — enable the TUN proxy compatibility flow. Equivalent to the Settings toggle.
 
@@ -181,4 +184,5 @@ time and signs `SHA256SUMS` with the private key.
 - Route-resolution DNS queries are always bound to the monitored interface (`IP_BOUND_IF` / `IP_UNICAST_IF`), so a TUN-mode proxy cannot hijack them with fake IPs. If the bound lookup fails (unreachable DNS, no interface DNS configured), NetCatcher falls back to the system resolver.
 - If the host runs a TUN-mode proxy (Clash / Mihomo / Surge) AND the applications themselves also need real IPs (not just NetCatcher's routing), turn on **TUN proxy compatibility** in Settings. Without it, your browser/terminal will still get fake IPs for the configured domains because the system DNS path is hijacked at the utun layer.
 - NetCatcher automatically refreshes the system DNS cache after a VPN interface connects, a domain route is refreshed manually, or TUN resolver rules change. Browser-private DNS and connection pools are separate; if a page still reuses an old connection, close that connection in the browser or TUN proxy and retry.
-- Routes and DNS lookups are re-run fresh on each connect event, so DNS changes are picked up automatically when the interface reconnects.
+- IPv4 destinations are always paired with the IPv4 gateway and IPv6 destinations with the IPv6 gateway. Dual-stack domain results create one route per available address family.
+- Gateways, routes, and DNS lookups are resolved fresh on each connect event, so network changes are picked up automatically when the interface reconnects.

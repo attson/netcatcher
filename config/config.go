@@ -2,15 +2,20 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 type Interface struct {
-	Name   string   `json:"name"`
-	Routes []string `json:"routes"`
-	DNS    []string `json:"dns,omitempty"`
+	Name        string   `json:"name"`
+	Routes      []string `json:"routes"`
+	DNS         []string `json:"dns,omitempty"`
+	IPv4Gateway string   `json:"ipv4Gateway,omitempty"`
+	IPv6Gateway string   `json:"ipv6Gateway,omitempty"`
 }
 
 type UpdaterConfig struct {
@@ -27,7 +32,7 @@ type Config struct {
 	// TunMode enables a local DNS forwarder + /etc/resolver entries so that
 	// domain routes resolve correctly when the host uses a TUN-mode proxy
 	// (Clash / Mihomo / Surge). Leave off in plain setups.
-	TunMode bool          `json:"tunMode,omitempty"`
+	TunMode bool `json:"tunMode,omitempty"`
 	// Updater holds user preferences for the in-app auto-update flow.
 	// Always serialized: omitempty does not apply to struct values, so
 	// once a config is saved, the `updater` key is present even if zero.
@@ -68,6 +73,9 @@ func Load(path string) (Config, error) {
 	if cfg.Interfaces == nil {
 		cfg.Interfaces = []Interface{}
 	}
+	if err := cfg.Validate(); err != nil {
+		return Config{}, err
+	}
 	if _, hasUpdater := raw["updater"]; !hasUpdater {
 		cfg.Updater.AutoCheck = true
 	}
@@ -75,6 +83,9 @@ func Load(path string) (Config, error) {
 }
 
 func Save(path string, cfg Config) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
@@ -84,4 +95,31 @@ func Save(path string, cfg Config) error {
 		return err
 	}
 	return os.WriteFile(path, data, 0644)
+}
+
+func (c Config) Validate() error {
+	for _, iface := range c.Interfaces {
+		if gateway := strings.TrimSpace(iface.IPv4Gateway); gateway != "" {
+			ip := net.ParseIP(gateway)
+			if ip == nil || ip.To4() == nil {
+				return fmt.Errorf("interface %s has invalid IPv4 gateway %q", iface.Name, gateway)
+			}
+		}
+		if gateway := strings.TrimSpace(iface.IPv6Gateway); gateway != "" {
+			address, zone := splitIPv6Zone(gateway)
+			ip := net.ParseIP(address)
+			if ip == nil || ip.To4() != nil || (strings.Contains(gateway, "%") && zone == "") || strings.ContainsAny(zone, " \t/") {
+				return fmt.Errorf("interface %s has invalid IPv6 gateway %q", iface.Name, gateway)
+			}
+		}
+	}
+	return nil
+}
+
+func splitIPv6Zone(address string) (string, string) {
+	idx := strings.LastIndex(address, "%")
+	if idx < 0 {
+		return address, ""
+	}
+	return address[:idx], address[idx+1:]
 }

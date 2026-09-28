@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -46,7 +47,17 @@ func (n *Notifier) OnStatusChange(status nc.InterfaceStatus) {
 	var title, body string
 	if status.Connected {
 		title = "Interface Connected"
-		body = fmt.Sprintf("%s is now online (gateway: %s)", status.InterfaceName, status.Gateway)
+		var gateways []string
+		if status.IPv4Gateway != "" {
+			gateways = append(gateways, "IPv4: "+status.IPv4Gateway)
+		}
+		if status.IPv6Gateway != "" {
+			gateways = append(gateways, "IPv6: "+status.IPv6Gateway)
+		}
+		body = fmt.Sprintf("%s is now online", status.InterfaceName)
+		if len(gateways) > 0 {
+			body += " (" + strings.Join(gateways, ", ") + ")"
+		}
 	} else {
 		title = "Interface Disconnected"
 		body = fmt.Sprintf("%s is now offline", status.InterfaceName)

@@ -43,6 +43,12 @@
   "routes.dnsHint": "(used to resolve domains via this interface; falls back to system DNS)",
   "routes.dnsPlaceholder": "DNS server (e.g. 10.0.0.1 or 10.0.0.1:53)",
   "routes.removeDns": "Remove DNS server",
+  "routes.ipv4Gateway": "IPv4 gateway",
+  "routes.ipv6Gateway": "IPv6 gateway",
+  "routes.gatewayAuto": "Auto-detect",
+  "routes.gatewayHint": "Leave empty to detect the gateway for this interface automatically",
+  "routes.invalidIPv4Gateway": "Enter a valid IPv4 address",
+  "routes.invalidIPv6Gateway": "Enter a valid IPv6 address",
 
   "logs.title": "Logs",
   "logs.search": "Search...",

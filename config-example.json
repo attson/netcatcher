@@ -3,6 +3,8 @@
   "interfaces": [
     {
       "name": "ppp0",
+      "ipv4Gateway": "10.0.0.1",
+      "ipv6Gateway": "fe80::1%ppp0",
       "dns": ["114.114.114.114"],
       "routes": [
         "github.com",

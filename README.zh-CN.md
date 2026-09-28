@@ -111,6 +111,8 @@ go build -o build/bin/netcatcher-app .
   "interfaces": [
     {
       "name": "ppp0",
+      "ipv4Gateway": "10.0.0.1",
+      "ipv6Gateway": "fe80::1%ppp0",
       "dns": ["114.114.114.114"],
       "routes": [
         "github.com",
@@ -123,6 +125,7 @@ go build -o build/bin/netcatcher-app .
 ```
 
 - `name` 字段必须与操作系统中的网络接口名称完全一致（如 VPN 适配器名称）。
+- `ipv4Gateway` / `ipv6Gateway`（可选）— 覆盖对应地址族的网关；留空时从操作系统路由表自动检测该接口的真实网关。IPv6 链路本地网关可以带接口作用域，例如 `fe80::1%en0`。
 - `dns`（可选）— 解析该接口域名路由时使用的 DNS 服务器，查询会绑定到该接口发出。开启 `tunMode` 时，本地 DNS 转发器也会用这个列表。
 - `tunMode`（可选，默认 `false`）— 开启 TUN 代理适配流程，等同于设置页的开关。
 

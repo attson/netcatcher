@@ -14,6 +14,7 @@ const pingResults = ref({})
 const newIfaceName = ref('')
 const newRoutes = ref({})
 const newDns = ref({})
+const gatewayErrors = ref({})
 const saveMessage = ref('')
 const systemInterfaces = ref([])
 const savedSnapshot = ref('')
@@ -79,6 +80,10 @@ function startEdit(name) {
 }
 
 async function applyEdit(name) {
+  const iface = configStore.config.interfaces.find(i => i.name === name)
+  if (!iface || !validateGateways(iface)) return
+  iface.ipv4Gateway = (iface.ipv4Gateway || '').trim()
+  iface.ipv6Gateway = (iface.ipv6Gateway || '').trim()
   await save()
   if (saveMessage.value === t('routes.saved')) {
     editing.value[name] = false
@@ -100,6 +105,7 @@ function cancelEdit(ifaceIdx) {
   } catch (e) { console.error('cancelEdit failed:', e) }
   newRoutes.value[ifaceIdx] = ''
   newDns.value[ifaceIdx] = ''
+  delete gatewayErrors.value[name]
   editing.value[name] = false
 }
 
@@ -112,16 +118,72 @@ function addRoute(ifaceIndex) {
 }
 
 function validateRoute(route) {
-  const ipv4 = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/
-  const cidr = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$/
+  const slash = route.lastIndexOf('/')
+  if (slash > 0) {
+    const address = route.slice(0, slash)
+    const prefix = Number(route.slice(slash + 1))
+    if (!Number.isInteger(prefix)) return false
+    if (isIPv4(address)) return prefix >= 0 && prefix <= 32
+    if (isIPv6(address)) return prefix >= 0 && prefix <= 128
+    return false
+  }
   const domain = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/
-  return ipv4.test(route) || cidr.test(route) || domain.test(route)
+  return isIPv4(route) || isIPv6(route) || domain.test(route)
 }
 
 function validateDns(dns) {
-  const ipv4 = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/
-  const ipv4Port = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}$/
-  return ipv4.test(dns) || ipv4Port.test(dns)
+  if (isIPv4(dns) || isIPv6WithZone(dns)) return true
+  const bracketed = dns.match(/^\[(.+)]:(\d+)$/)
+  if (bracketed) return isIPv6WithZone(bracketed[1]) && validPort(bracketed[2])
+  const separator = dns.lastIndexOf(':')
+  if (separator < 0) return false
+  return isIPv4(dns.slice(0, separator)) && validPort(dns.slice(separator + 1))
+}
+
+function isIPv4(value) {
+  const parts = value.split('.')
+  return parts.length === 4 && parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255)
+}
+
+function isIPv6(value) {
+  if (!value.includes(':') || value.includes('%')) return false
+  try {
+    return new URL(`http://[${value}]/`).hostname.startsWith('[')
+  } catch {
+    return false
+  }
+}
+
+function isIPv6WithZone(value) {
+  const parts = value.split('%')
+  if (parts.length > 2 || !isIPv6(parts[0])) return false
+  return parts.length === 1 || /^[a-zA-Z0-9_.-]+$/.test(parts[1])
+}
+
+function validPort(value) {
+  const port = Number(value)
+  return /^\d{1,5}$/.test(value) && port >= 1 && port <= 65535
+}
+
+function validateGateways(iface) {
+  const errors = {}
+  const ipv4 = (iface.ipv4Gateway || '').trim()
+  const ipv6 = (iface.ipv6Gateway || '').trim()
+  if (ipv4 && !isIPv4(ipv4)) errors.ipv4 = t('routes.invalidIPv4Gateway')
+  if (ipv6 && !isIPv6WithZone(ipv6)) errors.ipv6 = t('routes.invalidIPv6Gateway')
+  gatewayErrors.value[iface.name] = errors
+  return !errors.ipv4 && !errors.ipv6
+}
+
+function clearGatewayError(ifaceName, family) {
+  if (gatewayErrors.value[ifaceName]) gatewayErrors.value[ifaceName][family] = ''
+}
+
+function gatewayValue(iface, family) {
+  const status = getMonitorIface(iface.name)
+  const statusValue = family === 'ipv4' ? status?.ipv4Gateway : status?.ipv6Gateway
+  const configured = family === 'ipv4' ? iface.ipv4Gateway : iface.ipv6Gateway
+  return statusValue || configured || t('routes.gatewayAuto')
 }
 
 function addDns(ifaceIndex) {
@@ -233,9 +295,37 @@ function isRouteActive(ifaceName, routeName) {
 
       <div v-if="expanded[iface.name]" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
         <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px; color: var(--text-secondary); font-size: 13px; margin-bottom: 8px;">
-          <div v-if="getMonitorIface(iface.name)?.gateway">
-            {{ $t('dashboard.gateway') }}
-            <span style="color: var(--text-primary); user-select: text;">{{ getMonitorIface(iface.name).gateway }}</span>
+          <div style="display: flex; align-items: flex-start; gap: 6px;">
+            <span style="padding-top: 3px;">{{ $t('routes.ipv4Gateway') }}</span>
+            <div>
+              <input v-if="editing[iface.name]" v-model="iface.ipv4Gateway"
+                     @input="clearGatewayError(iface.name, 'ipv4')"
+                     :placeholder="$t('routes.gatewayAuto')"
+                     :title="$t('routes.gatewayHint')"
+                     :aria-label="$t('routes.ipv4Gateway')"
+                     style="width: 180px; font-size: 12px; padding: 2px 6px;"
+                     :style="gatewayErrors[iface.name]?.ipv4 ? { borderColor: 'var(--error)' } : {}" />
+              <span v-else style="color: var(--text-primary); user-select: text;">{{ gatewayValue(iface, 'ipv4') }}</span>
+              <div v-if="gatewayErrors[iface.name]?.ipv4" style="color: var(--error); font-size: 11px; margin-top: 2px;">
+                {{ gatewayErrors[iface.name].ipv4 }}
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 6px;">
+            <span style="padding-top: 3px;">{{ $t('routes.ipv6Gateway') }}</span>
+            <div>
+              <input v-if="editing[iface.name]" v-model="iface.ipv6Gateway"
+                     @input="clearGatewayError(iface.name, 'ipv6')"
+                     :placeholder="$t('routes.gatewayAuto')"
+                     :title="$t('routes.gatewayHint')"
+                     :aria-label="$t('routes.ipv6Gateway')"
+                     style="width: 220px; font-size: 12px; padding: 2px 6px;"
+                     :style="gatewayErrors[iface.name]?.ipv6 ? { borderColor: 'var(--error)' } : {}" />
+              <span v-else style="color: var(--text-primary); user-select: text;">{{ gatewayValue(iface, 'ipv6') }}</span>
+              <div v-if="gatewayErrors[iface.name]?.ipv6" style="color: var(--error); font-size: 11px; margin-top: 2px;">
+                {{ gatewayErrors[iface.name].ipv6 }}
+              </div>
+            </div>
           </div>
           <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px;" :title="$t('routes.dnsHint')">
             <span>{{ $t('routes.dnsLabel') }}</span>

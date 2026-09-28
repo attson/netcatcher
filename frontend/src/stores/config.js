@@ -29,7 +29,9 @@ export const useConfigStore = defineStore('config', () => {
     finally { saving.value = false }
   }
 
-  function addInterface(name) { config.value.interfaces.push({ name, routes: [], dns: [] }) }
+  function addInterface(name) {
+    config.value.interfaces.push({ name, routes: [], dns: [], ipv4Gateway: '', ipv6Gateway: '' })
+  }
   function removeInterface(index) { config.value.interfaces.splice(index, 1) }
   function addRoute(ifaceIndex, route) { config.value.interfaces[ifaceIndex].routes.push(route) }
   function removeRoute(ifaceIndex, routeIndex) { config.value.interfaces[ifaceIndex].routes.splice(routeIndex, 1) }
