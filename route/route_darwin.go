@@ -202,9 +202,6 @@ func darwinRouteArgs(action string, spec RouteSpec) ([]string, error) {
 		kind = "-net"
 	}
 	args := []string{action, family, kind}
-	if spec.InterfaceName != "" {
-		args = append(args, "-ifscope", spec.InterfaceName)
-	}
 	args = append(args, spec.IP)
 	if ipv6 && spec.Mask != nil {
 		ones, _ := spec.Mask.Size()

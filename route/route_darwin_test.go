@@ -82,14 +82,24 @@ func TestDarwinRouteArgs(t *testing.T) {
 		want []string
 	}{
 		{
+			name: "IPv4 host",
+			spec: RouteSpec{IP: "192.168.10.8", Gateway: "192.168.1.1", InterfaceName: "en0"},
+			want: []string{"add", "-inet", "-host", "192.168.10.8", "192.168.1.1"},
+		},
+		{
 			name: "IPv4 network",
 			spec: RouteSpec{IP: "192.168.10.0", Gateway: "192.168.1.1", Mask: net.CIDRMask(24, 32), InterfaceName: "en0"},
-			want: []string{"add", "-inet", "-net", "-ifscope", "en0", "192.168.10.0", "192.168.1.1", "255.255.255.0"},
+			want: []string{"add", "-inet", "-net", "192.168.10.0", "192.168.1.1", "255.255.255.0"},
+		},
+		{
+			name: "IPv6 host",
+			spec: RouteSpec{IP: "2001:db8::8", Gateway: "fe80::1%en0", InterfaceName: "en0"},
+			want: []string{"add", "-inet6", "-host", "2001:db8::8", "fe80::1%en0"},
 		},
 		{
 			name: "IPv6 network",
 			spec: RouteSpec{IP: "2001:db8:1::", Gateway: "fe80::1%en0", Mask: net.CIDRMask(64, 128), InterfaceName: "en0"},
-			want: []string{"add", "-inet6", "-net", "-ifscope", "en0", "2001:db8:1::", "-prefixlen", "64", "fe80::1%en0"},
+			want: []string{"add", "-inet6", "-net", "2001:db8:1::", "-prefixlen", "64", "fe80::1%en0"},
 		},
 	}
 	for _, test := range tests {
